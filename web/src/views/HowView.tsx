@@ -41,7 +41,7 @@ export function HowView() {
   return (
     <div className="stack prose">
       <header className="page-head">
-        <Mascot pose="code" size={96} float />
+        <Mascot mood="happy" size={96} />
         <div>
           <h1>{t('about')}</h1>
           <p className="lead">

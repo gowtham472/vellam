@@ -113,10 +113,10 @@ function TopBar({ section, theme, onTheme, onLanguage }: ChromeProps) {
     <header className="topbar">
       <div className="topbar-inner">
         <a className="brand" href="#/" aria-label="Vellam, home">
-          <Mascot pose="happy" size={40} />
+          <Mascot mood="happy" size={40} />
           <span>
             <strong>Vellam</strong>
-            <small lang="ta">வெள்ளம்</small>
+            {section !== 'home' && <small lang="ta">வெள்ளம்</small>}
           </span>
         </a>
         <nav className="topnav" aria-label="Main">
@@ -131,10 +131,12 @@ function TopBar({ section, theme, onTheme, onLanguage }: ChromeProps) {
           <button type="button" className="icon-button" onClick={onTheme} aria-label={t(theme === 'dark' ? 'themeLight' : 'themeDark')}>
             <ThemeIcon weight="bold" aria-hidden="true" />
           </button>
-          <button type="button" className="chip-button" onClick={onLanguage}>
-            <TranslateIcon weight="bold" aria-hidden="true" />
-            {t('language')}
-          </button>
+          {section !== 'home' && (
+            <button type="button" className="chip-button" onClick={onLanguage}>
+              <TranslateIcon weight="bold" aria-hidden="true" />
+              {t('language')}
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -196,7 +198,9 @@ export function App() {
   };
 
   return (
-    <LanguageContext.Provider value={language}>
+    // The landing page is written in English only, so its navigation and footer are too.
+    // Tamil applies from the first page a resident actually uses.
+    <LanguageContext.Provider value={route.view === 'home' ? 'en' : language}>
       <TopBar {...chrome} />
       <main className={route.view === 'home' ? 'page page-wide' : 'page'}>
         {route.view === 'home' && <HomeView />}
@@ -224,7 +228,7 @@ function Footer() {
     <footer className="footer">
       <div className="footer-inner">
         <div className="footer-brand">
-          <Mascot pose="calm" size={44} />
+          <Mascot mood="calm" size={44} />
           <p>{t('footer')}</p>
         </div>
         <p className="footer-credits">

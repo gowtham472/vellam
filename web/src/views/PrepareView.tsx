@@ -28,7 +28,7 @@ export function PrepareView() {
           return (
             <section key={level} className="level-card" style={{ borderTopColor: LEVEL[level].colour }}>
               <div className="level-card-head">
-                <Mascot pose={LEVEL[level].pose} size={72} />
+                <Mascot mood={LEVEL[level].mood} size={72} />
                 <div>
                   <span className="pill" style={{ background: LEVEL[level].colour }}>
                     <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[level][language]}

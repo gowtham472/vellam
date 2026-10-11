@@ -1,175 +1,270 @@
-import {
-  ArrowRightIcon,
-  ChatsCircleIcon,
-  ClockCounterClockwiseIcon,
-  CloudRainIcon,
-  ListChecksIcon,
-  MapPinAreaIcon,
-  MapTrifoldIcon,
-  ScalesIcon,
-  SealCheckIcon,
-  TranslateIcon,
-  UsersThreeIcon,
-  WhatsappLogoIcon,
-  type Icon,
-} from '@phosphor-icons/react';
+import { ArrowRightIcon, ClockCounterClockwiseIcon, MapPinIcon, SealCheckIcon, UsersThreeIcon } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
-import type { Level, Snapshot } from '../../../engine/src/core/types.ts';
+import type { PlaceView as PlaceData } from '../../../engine/src/api/service.ts';
+import { levelFor } from '../../../engine/src/core/assess.ts';
+import { classifyDailyRain, describeRainClass } from '../../../engine/src/core/rain.ts';
+import type { EvidenceSource, Level, Snapshot, Susceptibility } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { Finder } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
-import { useText, type TextKey } from '../i18n.ts';
 import { LEVEL } from '../level.ts';
+import { STORMS } from '../storms.ts';
 
-const STEPS: readonly { icon: Icon; title: TextKey; text: TextKey; art: string }[] = [
-  { icon: CloudRainIcon, title: 'step1Title', text: 'step1Text', art: 'weather-forecast' },
-  { icon: MapTrifoldIcon, title: 'step2Title', text: 'step2Text', art: 'location-search' },
-  { icon: ListChecksIcon, title: 'step3Title', text: 'step3Text', art: 'checklist' },
+const LEVEL_WORD: Record<Level, string> = { LOW: 'Low', WATCH: 'Watch', HIGH: 'High', SEVERE: 'Severe' };
+
+/** The three kinds of street the rain dial compares, in the words a resident would use. */
+const STREETS: readonly { exposure: Susceptibility; label: string }[] = [
+  { exposure: 'HIGH', label: 'A street that flooded in 2015' },
+  { exposure: 'SOME', label: 'A street 200 m from a lake' },
+  { exposure: 'NONE', label: 'A street with neither' },
 ];
 
-const FEATURES: readonly { icon: Icon; title: TextKey; text: TextKey }[] = [
-  { icon: ScalesIcon, title: 'featWhyTitle', text: 'featWhyText' },
-  { icon: ClockCounterClockwiseIcon, title: 'featMemoryTitle', text: 'featMemoryText' },
-  { icon: UsersThreeIcon, title: 'featNeighbourTitle', text: 'featNeighbourText' },
-  { icon: SealCheckIcon, title: 'featCheckTitle', text: 'featCheckText' },
-  { icon: WhatsappLogoIcon, title: 'featShareTitle', text: 'featShareText' },
-  { icon: TranslateIcon, title: 'featTamilTitle', text: 'featTamilText' },
-];
+/** The India Meteorological Department's class boundaries, which mark the dial. */
+const TICKS = [15.6, 64.5, 115.6, 204.5] as const;
+const DIAL_MAX = 260;
 
-const STATS: readonly { value: string; label: TextKey }[] = [
-  { value: '7,851', label: 'statStreets' },
-  { value: '65', label: 'statLocalities' },
-  { value: '48', label: 'statHours' },
-  { value: '30', label: 'statDays' },
-];
+const VELACHERY = { lat: 12.9756, lon: 80.2207 };
+const MICHAUNG = '2023-12-04';
 
-/** What the mascot says: the state of the city right now, read from the live snapshot. */
-function useCityMood(): { level: Level; line: string } | undefined {
-  const { t } = useText();
-  const [snapshot, setSnapshot] = useState<Snapshot>();
-  useEffect(() => {
-    api.city().then(setSnapshot, () => undefined);
-  }, []);
+const SOURCE_LABEL: Record<EvidenceSource, string> = {
+  FORECAST: 'Forecast',
+  OBSERVED: 'Measured',
+  TERRAIN: 'Terrain',
+  MAP: 'Map',
+  HISTORY: '2015 record',
+  JUDGEMENT: 'Judgement',
+};
+
+/** What the cloud says before anyone touches the dial: the state of the city, read live. */
+function cityLine(snapshot: Snapshot | undefined): { level: Level; line: string } | undefined {
   if (snapshot === undefined) return undefined;
   const count = (levels: readonly Level[]) => snapshot.places.filter((place) => levels.includes(place.level)).length;
   const atRisk = count(['HIGH', 'SEVERE']);
   if (atRisk > 0) {
-    return { level: snapshot.places.some((place) => place.level === 'SEVERE') ? 'SEVERE' : 'HIGH', line: t('mascotRisk', { n: atRisk }) };
+    const level = snapshot.places.some((place) => place.level === 'SEVERE') ? 'SEVERE' : 'HIGH';
+    return { level, line: `Flooding is likely in ${String(atRisk)} Chennai localities in the next 48 hours.` };
   }
   const watching = count(['WATCH']);
-  if (watching > 0) return { level: 'WATCH', line: t('mascotWatch', { n: watching }) };
-  return { level: 'LOW', line: t('mascotCalm', { n: snapshot.places.length }) };
+  if (watching > 0) return { level: 'WATCH', line: `Rain is on the way. ${String(watching)} Chennai localities are on watch.` };
+  return { level: 'LOW', line: `Chennai looks dry for the next 48 hours. All ${String(snapshot.places.length)} localities are low.` };
+}
+
+/**
+ * The hero. The dial runs the engine's own rain classes and level table, so dragging it
+ * shows the real rule: the same rain means different things on different streets.
+ */
+function RainDial() {
+  const [snapshot, setSnapshot] = useState<Snapshot>();
+  const [mm, setMm] = useState<number>();
+
+  useEffect(() => {
+    api.city().then(setSnapshot, () => undefined);
+  }, []);
+
+  const live = cityLine(snapshot);
+  const rainClass = mm === undefined ? undefined : classifyDailyRain(mm);
+  const worst = rainClass === undefined ? live?.level : levelFor(rainClass, 'HIGH');
+  const drops = mm === undefined ? 0 : Math.round((mm / DIAL_MAX) * 22);
+
+  return (
+    <div className="dial">
+      <div className="dial-stage">
+        <div className="dial-rain" aria-hidden="true">
+          {Array.from({ length: drops }, (_, i) => (
+            <span key={i} style={{ left: `${String((i * 37) % 100)}%`, animationDelay: `${String((i * 0.19) % 1.4)}s` }} />
+          ))}
+        </div>
+        <Mascot mood={worst === undefined ? 'sleepy' : LEVEL[worst].mood} size={280} interactive className="dial-mascot" />
+      </div>
+
+      <p className="dial-says" role="status">
+        {mm === undefined || rainClass === undefined
+          ? (live?.line ?? 'Reading the sky over Chennai.')
+          : `${String(mm)} mm in a day. The India Meteorological Department calls that ${describeRainClass(rainClass).split(' (')[0] ?? ''}.`}
+      </p>
+
+      <label className="dial-control">
+        <span>Drag to change the rain in 24 hours</span>
+        <input
+          type="range"
+          min={0}
+          max={DIAL_MAX}
+          step={1}
+          value={mm ?? 0}
+          onChange={(event) => {
+            setMm(Number(event.target.value));
+          }}
+        />
+        <span className="dial-ticks" aria-hidden="true">
+          {TICKS.map((tick) => (
+            <i key={tick} style={{ left: `${String((tick / DIAL_MAX) * 100)}%` }}>
+              {tick}
+            </i>
+          ))}
+        </span>
+      </label>
+
+      <ul className="dial-streets">
+        {STREETS.map(({ exposure, label }) => {
+          const level = levelFor(rainClass ?? 'LIGHT', exposure);
+          const LevelIcon = LEVEL[level].icon;
+          return (
+            <li key={exposure}>
+              <span>{label}</span>
+              <strong style={{ color: LEVEL[level].colour }}>
+                <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_WORD[level]}
+              </strong>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** A real answer from the engine, fetched live: Velachery on the day Cyclone Michaung hit. */
+function RealAnswer() {
+  const [data, setData] = useState<PlaceData>();
+
+  useEffect(() => {
+    api.assess(VELACHERY, MICHAUNG).then(setData, () => undefined);
+  }, []);
+
+  if (data === undefined) return null;
+  const { assessment } = data;
+  const look = LEVEL[assessment.level];
+  const LevelIcon = look.icon;
+  const worst = Math.max(...assessment.windows.map((window) => window.trailing24hMm));
+
+  return (
+    <section className="answer">
+      <div className="answer-intro">
+        <h2>This is what it said about Velachery on the day Michaung hit</h2>
+        <p>
+          This answer is fetched live from the same engine, given the rain on record for 4 December 2023. Every line
+          says where it came from, and the last one is marked as Vellam's own judgement.
+        </p>
+        <a className="text-link" href={`#/place/${String(VELACHERY.lat)},${String(VELACHERY.lon)}/${MICHAUNG}`}>
+          Open the full answer <ArrowRightIcon weight="bold" aria-hidden="true" />
+        </a>
+      </div>
+
+      <div className="answer-sheet">
+        <header style={{ borderColor: look.colour }}>
+          <span className="answer-where">
+            <MapPinIcon weight="fill" aria-hidden="true" /> Velachery, 4 Dec 2023
+          </span>
+          <strong style={{ color: look.colour }}>
+            <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_WORD[assessment.level]}
+          </strong>
+          <span className="answer-rain">{worst} mm in the worst 24 hours</span>
+        </header>
+        <ul>
+          {assessment.evidence.map((item) => (
+            <li key={item.statement}>
+              <span className={`source source-${item.source.toLowerCase()}`}>{SOURCE_LABEL[item.source]}</span>
+              <span>{item.statement}.</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
 }
 
 export function HomeView() {
-  const { t } = useText();
-  const mood = useCityMood();
-
   return (
     <div className="home">
       <section className="hero">
         <div className="hero-copy">
-          <span className="kicker">
-            <MapPinAreaIcon weight="fill" aria-hidden="true" /> {t('heroKicker')}
-          </span>
-          <h1>{t('tagline')}</h1>
-          <p className="lead">{t('intro')}</p>
+          <h1>Will my street flood?</h1>
+          <p className="lead">
+            Flood warnings in India cover a whole district. Vellam answers for one street in Chennai: what to expect in the
+            next 48 hours, the reasons, and what to do about it.
+          </p>
           <Finder />
-          <div className="cta-row">
-            <a className="button button-solid button-large" href="#/check">
-              {t('ctaCheck')} <ArrowRightIcon weight="bold" aria-hidden="true" />
-            </a>
-            <a className="button button-ghost button-large" href="#/replay/2023-12-04">
-              <ClockCounterClockwiseIcon weight="bold" aria-hidden="true" /> {t('ctaReplay')}
-            </a>
-          </div>
+          <a className="button button-solid button-large" href="#/check">
+            Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
+          </a>
         </div>
+        <RainDial />
+      </section>
 
-        <div className="hero-stage">
-          <div className="rain" aria-hidden="true">
-            {Array.from({ length: 14 }, (_, i) => (
-              <span key={i} style={{ left: `${String(6 + i * 6.6)}%`, animationDelay: `${String((i * 0.37) % 2.2)}s` }} />
-            ))}
-          </div>
-          <Mascot pose={mood === undefined ? 'sleepy' : LEVEL[mood.level].pose} size={300} float className="hero-mascot" />
-          <div className="speech" style={mood === undefined ? undefined : { borderColor: LEVEL[mood.level].colour }} role="status">
-            <ChatsCircleIcon weight="fill" aria-hidden="true" style={mood === undefined ? undefined : { color: LEVEL[mood.level].colour }} />
-            <p>{mood?.line ?? `${t('mascotLoading')}…`}</p>
-          </div>
+      <RealAnswer />
+
+      <section className="trio">
+        <div className="trio-copy">
+          <h2>Three things a forecast cannot tell you</h2>
+          <dl>
+            <div>
+              <dt>
+                <ClockCounterClockwiseIcon weight="bold" aria-hidden="true" /> Whether your street has flooded before
+              </dt>
+              <dd>
+                In December 2015 residents mapped 7,851 flooded streets as the water rose. Vellam measures how far yours is
+                from the nearest one.
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <UsersThreeIcon weight="bold" aria-hidden="true" /> What your neighbours can see right now
+              </dt>
+              <dd>
+                Anyone can report water as ankle, knee or waist deep. A report stays on the map for 48 hours and stores
+                nothing about the person.
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <SealCheckIcon weight="bold" aria-hidden="true" /> How often the forecast has been right here
+              </dt>
+              <dd>For any spot, the last 30 days of day-ahead rain forecasts beside the rain that fell.</dd>
+            </div>
+          </dl>
         </div>
+        <img src="/illustrations/neighbourhood.svg" alt="" loading="lazy" />
       </section>
 
-      <section className="stats" aria-label="Vellam in numbers">
-        {STATS.map((stat) => (
-          <div key={stat.label}>
-            <strong>{stat.value}</strong>
-            <span>{t(stat.label)}</span>
-          </div>
-        ))}
-      </section>
-
-      <section className="block">
-        <h2 className="block-title">{t('howTitle')}</h2>
-        <ol className="steps">
-          {STEPS.map(({ icon: StepIcon, title, text, art }, index) => (
-            <li key={title}>
-              <img src={`/illustrations/${art}.svg`} alt="" loading="lazy" />
-              <span className="step-number">
-                <StepIcon weight="fill" aria-hidden="true" /> {index + 1}
-              </span>
-              <h3>{t(title)}</h3>
-              <p>{t(text)}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="block block-tint">
-        <h2 className="block-title">{t('featuresTitle')}</h2>
-        <ul className="features">
-          {FEATURES.map(({ icon: FeatureIcon, title, text }) => (
-            <li key={title}>
-              <span className="feature-icon">
-                <FeatureIcon weight="duotone" aria-hidden="true" />
-              </span>
-              <h3>{t(title)}</h3>
-              <p>{t(text)}</p>
+      <section className="storms">
+        <h2>Replay a storm through the same rules</h2>
+        <ul>
+          {STORMS.map((storm) => (
+            <li key={storm.date}>
+              <a href={`#/replay/${storm.date}`}>
+                <time dateTime={storm.date}>{storm.note}</time>
+                <strong>{storm.name}</strong>
+                <span>{storm.summary}</span>
+                <ArrowRightIcon weight="bold" aria-hidden="true" />
+              </a>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="block split">
-        <img src="/illustrations/turn-back-time.svg" alt="" loading="lazy" />
+      <section className="limits">
+        <Mascot mood="watch" size={150} />
         <div>
-          <h2 className="block-title">{t('replayTeaserTitle')}</h2>
-          <p className="lead">{t('replayTeaserText')}</p>
-          <a className="button button-solid" href="#/replay">
-            <ClockCounterClockwiseIcon weight="bold" aria-hidden="true" /> {t('replay')}
-          </a>
-        </div>
-      </section>
-
-      <section className="block split split-reverse honest">
-        <Mascot pose="look_left" size={200} />
-        <div>
-          <h2 className="block-title">{t('honestTitle')}</h2>
-          <p className="lead">{t('honestText')}</p>
-          <a className="button button-outline" href="#/how">
-            {t('readMethod')} <ArrowRightIcon weight="bold" aria-hidden="true" />
+          <h2>Where not to trust it</h2>
+          <ul>
+            <li>The level is a rule of thumb. Vellam does not model how water moves through drains.</li>
+            <li>Its replay of Cyclone Michaung missed Perungudi, which was under water for days.</li>
+            <li>Three of its thresholds were wrong on the first attempt. The method page records each one.</li>
+          </ul>
+          <a className="text-link" href="#/how">
+            Read the method <ArrowRightIcon weight="bold" aria-hidden="true" />
           </a>
         </div>
       </section>
 
       <section className="final">
-        <img src="/illustrations/walking-in-rain.svg" alt="" loading="lazy" />
         <div>
-          <h2>{t('finalTitle')}</h2>
-          <p>{t('finalText')}</p>
+          <h2>The northeast monsoon starts in October.</h2>
+          <p>Know your street before the first heavy night.</p>
           <a className="button button-invert button-large" href="#/check">
-            {t('ctaCheck')} <ArrowRightIcon weight="bold" aria-hidden="true" />
+            Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
           </a>
         </div>
+        <img src="/illustrations/walking-in-rain.svg" alt="" loading="lazy" />
       </section>
     </div>
   );

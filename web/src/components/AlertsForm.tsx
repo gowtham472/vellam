@@ -32,7 +32,7 @@ export function AlertsForm() {
 
   return (
     <section className="alerts-card">
-      <Mascot pose={message?.ok === true ? 'wink' : 'mail'} size={96} />
+      <Mascot mood={message?.ok === true ? 'wink' : 'happy'} size={96} />
       <div>
         <h2>{t('alertsTitle')}</h2>
         <p className="muted">{t('alertsText')}</p>

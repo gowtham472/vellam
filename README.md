@@ -33,8 +33,9 @@ The northeast monsoon, which brings Chennai most of its rain, starts in October.
 | **What would it have said in 2023?** | Replay Cyclone Michaung and three other storms through the same rules |
 | **Tell me when it matters** | The whole city is reassessed every three hours, and an email goes out when risk appears |
 
-The interface is in English and Tamil, in a light and a dark theme, and is laid out for a
-phone first. Five pages: the landing page, Check, Replay, Prepare and How it works.
+Five pages: the landing page, Check, Replay, Prepare and How it works, in a light and a dark
+theme, laid out for a phone first. The pages a resident uses are in English and Tamil; the
+landing page is in English.
 
 ## 3. How it decides
 
@@ -230,4 +231,4 @@ Built by team **DoodleByte** during the event:
 
 We used Claude Code (Anthropic) as an AI pair programmer for the code, tests, infrastructure
 template and documentation. Two things come from our own earlier projects: the deploy script
-for the dashboard, and the cloud mascot, which is recoloured to red here. Vellam's own answers come from fixed rules, never from a model.
+for the dashboard, and the cloud mascot's character, which is redrawn here as an SVG in red. Vellam's own answers come from fixed rules, never from a model.

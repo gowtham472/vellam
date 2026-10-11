@@ -41,7 +41,7 @@ export function CheckView({ date }: { date?: string }) {
         </a>
       )}
       <header className="page-head">
-        <Mascot pose={worst === undefined ? 'sleepy' : LEVEL[worst].pose} size={84} float />
+        <Mascot mood={worst === undefined ? 'sleepy' : LEVEL[worst].mood} size={84} />
         <div>
           <h1>{date === undefined ? t('checkTitle') : `${t('replayBadge')}: ${stormName(date)}`}</h1>
           <p className="lead">{date === undefined ? t('checkIntro') : t('replayIntro')}</p>

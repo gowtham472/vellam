@@ -99,7 +99,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
           <ArrowLeftIcon weight="bold" aria-hidden="true" /> {t('back')}
         </a>
         <div className="empty">
-          <Mascot pose="dizzy" size={140} />
+          <Mascot mood="dizzy" size={140} />
           <p className="notice notice-error">{error}</p>
         </div>
       </div>
@@ -108,7 +108,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
   if (data === undefined) {
     return (
       <div className="empty">
-        <Mascot pose="look_right" size={160} float />
+        <Mascot mood="watch" size={160} interactive />
         <p className="loading">{t('loading')}…</p>
       </div>
     );
@@ -162,7 +162,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
           )}
         </div>
         <div className="verdict-mascot">
-          <Mascot pose={look.pose} size={170} float />
+          <Mascot mood={look.mood} size={170} interactive />
         </div>
       </section>
 
@@ -268,7 +268,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             </div>
             {reported ? (
               <div className="thanks">
-                <Mascot pose="wink" size={72} />
+                <Mascot mood="wink" size={72} />
                 <p className="notice">{t('reportThanks')}</p>
               </div>
             ) : (
