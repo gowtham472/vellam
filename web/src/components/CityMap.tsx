@@ -33,9 +33,11 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
   useEffect(() => {
     if (container.current === null) return;
     const created = L.map(container.current, { zoomControl: true, attributionControl: true }).setView(CHENNAI, 11);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 18,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // OpenStreetMap's own tiles need no key. Their usage policy asks for attribution and
+    // light use, which a hackathon dashboard is; heavier traffic would need a tile provider.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(created);
     created.on('click', (event: L.LeafletMouseEvent) => {
       pick.current({ lat: event.latlng.lat, lon: event.latlng.lng });

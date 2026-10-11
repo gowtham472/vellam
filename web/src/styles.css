@@ -119,9 +119,12 @@ main {
   padding: 16px 16px 40px;
 }
 
+/* minmax(0, 1fr) lets a column shrink below its content; without it the map and the
+   timeline push the page wider than a phone. */
 .city,
 .place {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -307,6 +310,11 @@ h3 {
 
 .place .map {
   height: 280px;
+}
+
+/* The basemap is muted so the risk colours are the only strong colour on the map. */
+.map .leaflet-tile-pane {
+  filter: saturate(0.35) brightness(1.04);
 }
 
 .legend {
@@ -727,7 +735,7 @@ h3 {
 
 @media (min-width: 860px) {
   .place {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
   }
 
