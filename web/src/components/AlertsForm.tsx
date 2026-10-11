@@ -1,7 +1,8 @@
-import { BellRingingIcon } from '@phosphor-icons/react';
+import { PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api.ts';
 import { useText } from '../i18n.ts';
+import { Mascot } from './Mascot.tsx';
 
 export function AlertsForm() {
   const { t } = useText();
@@ -30,28 +31,29 @@ export function AlertsForm() {
   };
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>
-          <BellRingingIcon weight="bold" aria-hidden="true" /> {t('alertsTitle')}
-        </h2>
+    <section className="alerts-card">
+      <Mascot pose={message?.ok === true ? 'wink' : 'mail'} size={96} />
+      <div>
+        <h2>{t('alertsTitle')}</h2>
+        <p className="muted">{t('alertsText')}</p>
+        <form className="alerts-form" onSubmit={submit}>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
+            placeholder={t('email')}
+            aria-label={t('email')}
+          />
+          <button type="submit" className="button button-solid" disabled={sending}>
+            <PaperPlaneTiltIcon weight="fill" aria-hidden="true" />
+            {t('alertsButton')}
+          </button>
+        </form>
+        {message !== undefined && <p className={message.ok ? 'notice' : 'notice notice-error'}>{message.text}</p>}
       </div>
-      <form className="alerts" onSubmit={submit}>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-          }}
-          placeholder={t('email')}
-          aria-label={t('email')}
-        />
-        <button type="submit" className="button button-solid" disabled={sending}>
-          {t('alertsButton')}
-        </button>
-      </form>
-      {message !== undefined && <p className={message.ok ? 'notice' : 'error'}>{message.text}</p>}
     </section>
   );
 }

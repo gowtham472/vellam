@@ -1,13 +1,7 @@
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import type { Level, PlaceSummary, Point, WaterReport } from '../../../engine/src/core/types.ts';
-
-export const LEVEL_COLOUR: Record<Level, string> = {
-  LOW: '#2f9e6b',
-  WATCH: '#e0a100',
-  HIGH: '#e8590c',
-  SEVERE: '#c92a2a',
-};
+import { LEVEL } from '../level.ts';
 
 const CHENNAI: [number, number] = [13.02, 80.2];
 
@@ -59,7 +53,7 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
         radius: 9,
         color: '#ffffff',
         weight: 2,
-        fillColor: LEVEL_COLOUR[place.level],
+        fillColor: LEVEL[place.level].colour,
         fillOpacity: 0.95,
       })
         .bindTooltip(`${place.name}: ${place.level}`, { direction: 'top' })
@@ -72,7 +66,7 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
     for (const report of reports ?? []) {
       L.circleMarker([report.point.lat, report.point.lon], {
         radius: 6,
-        color: '#0b3954',
+        color: '#1c232b',
         weight: 2,
         fillColor: report.depth === 'NONE' ? '#ffffff' : '#1c7ed6',
         fillOpacity: 1,
@@ -83,9 +77,9 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
     if (focus !== undefined) {
       L.circleMarker([focus.point.lat, focus.point.lon], {
         radius: 13,
-        color: '#0b3954',
+        color: '#1c232b',
         weight: 3,
-        fillColor: LEVEL_COLOUR[focus.level],
+        fillColor: LEVEL[focus.level].colour,
         fillOpacity: 0.95,
       }).addTo(group);
       map.current.setView([focus.point.lat, focus.point.lon], 15);

@@ -1,3 +1,5 @@
+import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource-variable/noto-sans-tamil';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import { StrictMode } from 'react';

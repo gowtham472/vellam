@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, CheckCircleIcon, PhoneIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PlaceView as PlaceData, TrackRecordResult } from '../../../engine/src/api/service.ts';
 import { formatHour } from '../../../engine/src/core/assess.ts';
@@ -6,8 +6,11 @@ import { distanceMetres } from '../../../engine/src/core/geo.ts';
 import type { EvidenceSource, Point, RainWindow, WaterDepth, WaterReport } from '../../../engine/src/core/types.ts';
 import { api, type Place } from '../api.ts';
 import { placeLink } from '../App.tsx';
-import { CityMap, LEVEL_COLOUR } from '../components/CityMap.tsx';
+import { CityMap } from '../components/CityMap.tsx';
+import { loadPlaces } from '../components/Finder.tsx';
+import { Mascot } from '../components/Mascot.tsx';
 import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
+import { LEVEL } from '../level.ts';
 import { stormName } from '../storms.ts';
 
 const SOURCE_LABEL: Record<EvidenceSource, string> = {
@@ -28,11 +31,11 @@ function Timeline({ windows }: { windows: readonly RainWindow[] }) {
     <ol className="timeline">
       {windows.map((window) => (
         <li key={window.start}>
-          <span className="rain">{window.rainMm > 0 ? `${String(window.rainMm)}` : ''}</span>
+          <span className="rain-mm">{window.rainMm > 0 ? String(window.rainMm) : ''}</span>
           <span className="bar-track">
             <span
               className="bar"
-              style={{ height: `${String(Math.max(4, (window.rainMm / tallest) * 100))}%`, background: LEVEL_COLOUR[window.level] }}
+              style={{ height: `${String(Math.max(4, (window.rainMm / tallest) * 100))}%`, background: LEVEL[window.level].colour }}
             />
           </span>
           <span className="when">{formatHour(window.start).replace(/^(\w+) \d+ \w+, /, '$1 ')}</span>
@@ -66,7 +69,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
         setError(reason instanceof Error ? reason.message : String(reason));
       },
     );
-    api.places().then(setPlaces, () => undefined);
+    loadPlaces().then(setPlaces, () => undefined);
     if (date === undefined) api.trackRecord(point).then(setRecord, () => undefined);
     // The view is keyed by place and date, so this runs once per place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,20 +90,25 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
       : language === 'ta' && near.place.ta !== ''
         ? near.place.ta
         : near.place.name;
+  const backHref = date === undefined ? '#/check' : `#/replay/${date}`;
 
   if (error !== undefined) {
     return (
-      <div className="place">
-        <a className="back" href={date === undefined ? '#/' : `#/replay/${date}`}>
+      <div className="stack">
+        <a className="back" href={backHref}>
           <ArrowLeftIcon weight="bold" aria-hidden="true" /> {t('back')}
         </a>
-        <p className="error">{error}</p>
+        <div className="empty">
+          <Mascot pose="dizzy" size={140} />
+          <p className="notice notice-error">{error}</p>
+        </div>
       </div>
     );
   }
   if (data === undefined) {
     return (
-      <div className="place">
+      <div className="empty">
+        <Mascot pose="look_right" size={160} float />
         <p className="loading">{t('loading')}…</p>
       </div>
     );
@@ -108,7 +116,8 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
 
   const { assessment, guidance, helplines } = data;
   const advice = guidance[language];
-  const colour = LEVEL_COLOUR[assessment.level];
+  const look = LEVEL[assessment.level];
+  const LevelIcon = look.icon;
   const shareText = [
     `Vellam flood check${near === undefined ? '' : `, ${near.place.name}`}: ${assessment.level}.`,
     guidance.en.headline + '.',
@@ -131,194 +140,222 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
   };
 
   return (
-    <div className="place">
-      <a className="back" href={date === undefined ? '#/' : `#/replay/${date}`}>
+    <div className="stack">
+      <a className="back" href={backHref}>
         <ArrowLeftIcon weight="bold" aria-hidden="true" /> {date === undefined ? t('back') : stormName(date)}
       </a>
 
-      <section className="banner" style={{ background: colour }}>
-        <span className="badge">{date === undefined ? t('live') : `${t('replayBadge')}: ${stormName(date)}`}</span>
-        <p className="where">{title}</p>
-        <h1>
-          {LEVEL_NAME[assessment.level][language]}
-          <small>{advice.headline}</small>
-        </h1>
-        {assessment.peak !== undefined && <p className="peak">
-            {t('worstAround')} {formatHour(assessment.peak.start)}
-          </p>}
+      <section className="verdict" style={{ background: look.colour }}>
+        <div className="verdict-copy">
+          <span className="verdict-badge">{date === undefined ? t('live') : `${t('replayBadge')}: ${stormName(date)}`}</span>
+          <p className="verdict-where">
+            <MapPinIcon weight="fill" aria-hidden="true" /> {title}
+          </p>
+          <h1>
+            <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[assessment.level][language]}
+          </h1>
+          <p className="verdict-headline">{advice.headline}</p>
+          {assessment.peak !== undefined && (
+            <p className="verdict-peak">
+              <ClockIcon weight="bold" aria-hidden="true" /> {t('worstAround')} {formatHour(assessment.peak.start)}
+            </p>
+          )}
+        </div>
+        <div className="verdict-mascot">
+          <Mascot pose={look.pose} size={170} float />
+        </div>
       </section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>{date === undefined ? t('next48') : `${t('hoursFrom')} ${formatHour(assessment.from)}`}</h2>
-          <span className="muted">mm / 6 h</span>
-        </div>
-        <Timeline windows={assessment.windows} />
-      </section>
+      <div className="columns">
+        <section className="card">
+          <div className="card-head">
+            <h2>{date === undefined ? t('next48') : `${t('hoursFrom')} ${formatHour(assessment.from)}`}</h2>
+            <span className="muted">mm / 6 h</span>
+          </div>
+          <Timeline windows={assessment.windows} />
+        </section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>{t('whatToDo')}</h2>
-        </div>
-        <ul className="actions">
-          {advice.actions.map((action) => (
-            <li key={action}>
-              <CheckCircleIcon weight="fill" aria-hidden="true" style={{ color: colour }} />
-              {action}
-            </li>
-          ))}
-        </ul>
-        <div className="row">
+        <section className="card">
+          <div className="card-head">
+            <h2>{t('whatToDo')}</h2>
+          </div>
+          <ul className="actions">
+            {advice.actions.map((action) => (
+              <li key={action}>
+                <CheckCircleIcon weight="fill" aria-hidden="true" style={{ color: look.colour }} />
+                {action}
+              </li>
+            ))}
+          </ul>
           <a className="button button-whatsapp" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer">
             <WhatsappLogoIcon weight="fill" aria-hidden="true" /> {t('share')}
           </a>
-          {helplines.map((line) => (
-            <a key={line.number} className="button" href={`tel:${line.number}`}>
-              <PhoneIcon weight="bold" aria-hidden="true" /> {line.number}
-              <small>{line[language]}</small>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>{t('why')}</h2>
-        </div>
-        {language === 'ta' && <p className="muted">{t('whyNote')}</p>}
-        <ul className="evidence">
-          {assessment.evidence.map((item) => (
-            <li key={item.statement}>
-              <span className={`source source-${item.source.toLowerCase()}`}>{SOURCE_LABEL[item.source]}</span>
-              <span>
-                {item.statement}.{' '}
-                {item.link !== undefined && (
-                  <a href={item.link} target="_blank" rel="noreferrer">
-                    Source
-                  </a>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <dl className="facts">
-          <div>
-            <dt>{t('groundHeight')}</dt>
-            <dd>{assessment.terrain.elevation} m</dd>
+          <div className="helplines helplines-compact">
+            {helplines.map((line) => (
+              <a key={line.number} className="helpline" href={`tel:${line.number}`}>
+                <PhoneIcon weight="fill" aria-hidden="true" />
+                <strong>{line.number}</strong>
+                <span>{line[language]}</span>
+              </a>
+            ))}
           </div>
-          <div>
-            <dt>{t('nearestWater')}</dt>
-            <dd>
-              {!assessment.mapped
-                ? t('notMapped')
-                : assessment.nearestWater === undefined
-                  ? t('noneWithinKm')
-                  : `${assessment.nearestWater.name || assessment.nearestWater.kind}, ${String(assessment.nearestWater.distanceMetres)} m`}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('flooded2015')}</dt>
-            <dd>
-              {!assessment.mapped
-                ? t('notMapped')
-                : assessment.floodedStreetMetres === undefined
-                  ? t('noneWithinKm')
-                  : `${String(assessment.floodedStreetMetres)} m`}
-            </dd>
-          </div>
-        </dl>
-        <CityMap focus={{ point, level: assessment.level }} reports={reports} onPick={(picked) => (location.hash = placeLink(picked.lat, picked.lon, date))} />
-      </section>
-
-      {date === undefined && (
-        <section className="panel">
-          <div className="panel-head">
-            <h2>{t('reportTitle')}</h2>
-          </div>
-          {reported ? (
-            <p className="notice">{t('reportThanks')}</p>
-          ) : (
-            <div className="row depths">
-              {DEPTHS.map((depth) => (
-                <button key={depth} type="button" className="button" onClick={() => sendReport(depth)}>
-                  {DEPTH_NAME[depth][language]}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="muted">{t('reportNote')}</p>
-          <h3>{t('reportsNearby')}</h3>
-          {reports.length === 0 ? (
-            <p className="muted">{t('noReports')}</p>
-          ) : (
-            <ul className="reports">
-              {reports.slice(0, 8).map((report) => (
-                <li key={report.id}>
-                  <strong>{DEPTH_NAME[report.depth][language]}</strong>
-                  <span className="muted">
-                    {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
-      )}
 
-      {record !== undefined && (
-        <section className="panel">
-          <div className="panel-head">
-            <h2>{t('trackTitle')}</h2>
+        <section className="card">
+          <div className="card-head">
+            <h2>{t('why')}</h2>
           </div>
-          <p className="muted">{t('trackIntro')}</p>
-          <ul className="scores">
-            <li>
-              <strong>
-                {record.record.matched}/{record.record.days}
-              </strong>
-              {t('days')} {t('matched')}
-            </li>
-            <li>
-              <strong>{record.record.underForecast}</strong>
-              {t('under')}
-            </li>
-            <li>
-              <strong>{record.record.overForecast}</strong>
-              {t('over')}
-            </li>
+          {language === 'ta' && <p className="muted">{t('whyNote')}</p>}
+          <ul className="evidence">
+            {assessment.evidence.map((item) => (
+              <li key={item.statement}>
+                <span className={`source source-${item.source.toLowerCase()}`}>{SOURCE_LABEL[item.source]}</span>
+                <span>
+                  {item.statement}.{' '}
+                  {item.link !== undefined && (
+                    <a href={item.link} target="_blank" rel="noreferrer">
+                      Source
+                    </a>
+                  )}
+                </span>
+              </li>
+            ))}
           </ul>
-          <p className="muted">
-            {record.record.heavyDays === 0
-              ? t('heavyNone')
-              : `${t('heavyDays')}: ${String(record.record.heavyDays)}, forecast as heavy: ${String(record.record.heavyDaysForecast)}.`}
-          </p>
-          <table className="checks">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>{t('forecastCol')}</th>
-                <th>{t('fellCol')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {[...record.checks]
-                .reverse()
-                .slice(0, 10)
-                .map((check) => (
-                  <tr key={check.date}>
-                    <td>{check.date}</td>
-                    <td>{check.forecastMm} mm</td>
-                    <td>{check.observedMm} mm</td>
-                    <td className={`verdict verdict-${check.verdict.toLowerCase()}`}>
-                      {check.verdict === 'MATCHED' ? t('matched') : check.verdict === 'UNDER_FORECAST' ? t('under') : t('over')}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
         </section>
-      )}
+
+        <section className="card">
+          <div className="card-head">
+            <h2>{t('thisSpot')}</h2>
+          </div>
+          <dl className="facts">
+            <div>
+              <MountainsIcon weight="duotone" aria-hidden="true" />
+              <dt>{t('groundHeight')}</dt>
+              <dd>{assessment.terrain.elevation} m</dd>
+            </div>
+            <div>
+              <WavesIcon weight="duotone" aria-hidden="true" />
+              <dt>{t('nearestWater')}</dt>
+              <dd>
+                {!assessment.mapped
+                  ? t('notMapped')
+                  : assessment.nearestWater === undefined
+                    ? t('noneWithinKm')
+                    : `${assessment.nearestWater.name || assessment.nearestWater.kind}, ${String(assessment.nearestWater.distanceMetres)} m`}
+              </dd>
+            </div>
+            <div>
+              <RoadHorizonIcon weight="duotone" aria-hidden="true" />
+              <dt>{t('flooded2015')}</dt>
+              <dd>
+                {!assessment.mapped
+                  ? t('notMapped')
+                  : assessment.floodedStreetMetres === undefined
+                    ? t('noneWithinKm')
+                    : `${String(assessment.floodedStreetMetres)} m`}
+              </dd>
+            </div>
+          </dl>
+          <CityMap focus={{ point, level: assessment.level }} reports={reports} onPick={(picked) => (location.hash = placeLink(picked.lat, picked.lon, date))} />
+        </section>
+
+        {date === undefined && (
+          <section className="card">
+            <div className="card-head">
+              <h2>
+                <DropIcon weight="fill" aria-hidden="true" /> {t('reportTitle')}
+              </h2>
+            </div>
+            {reported ? (
+              <div className="thanks">
+                <Mascot pose="wink" size={72} />
+                <p className="notice">{t('reportThanks')}</p>
+              </div>
+            ) : (
+              <div className="depths">
+                {DEPTHS.map((depth) => (
+                  <button key={depth} type="button" className="button button-outline" onClick={() => sendReport(depth)}>
+                    {DEPTH_NAME[depth][language]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="muted">{t('reportNote')}</p>
+            <h3>{t('reportsNearby')}</h3>
+            {reports.length === 0 ? (
+              <p className="muted">{t('noReports')}</p>
+            ) : (
+              <ul className="reports">
+                {reports.slice(0, 8).map((report) => (
+                  <li key={report.id}>
+                    <strong>{DEPTH_NAME[report.depth][language]}</strong>
+                    <span className="muted">
+                      {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {record !== undefined && (
+          <section className="card">
+            <div className="card-head">
+              <h2>{t('trackTitle')}</h2>
+            </div>
+            <p className="muted">{t('trackIntro')}</p>
+            <ul className="scores">
+              <li>
+                <strong>
+                  {record.record.matched}/{record.record.days}
+                </strong>
+                {t('days')} {t('matched')}
+              </li>
+              <li>
+                <strong>{record.record.underForecast}</strong>
+                {t('under')}
+              </li>
+              <li>
+                <strong>{record.record.overForecast}</strong>
+                {t('over')}
+              </li>
+            </ul>
+            <p className="muted">
+              {record.record.heavyDays === 0
+                ? t('heavyNone')
+                : `${t('heavyDays')}: ${String(record.record.heavyDays)}, forecast as heavy: ${String(record.record.heavyDaysForecast)}.`}
+            </p>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t('dateCol')}</th>
+                    <th>{t('forecastCol')}</th>
+                    <th>{t('fellCol')}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...record.checks]
+                    .reverse()
+                    .slice(0, 8)
+                    .map((check) => (
+                      <tr key={check.date}>
+                        <td>{check.date}</td>
+                        <td>{check.forecastMm} mm</td>
+                        <td>{check.observedMm} mm</td>
+                        <td className={`verdict-${check.verdict.toLowerCase()}`}>
+                          {check.verdict === 'MATCHED' ? t('matched') : check.verdict === 'UNDER_FORECAST' ? t('under') : t('over')}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

@@ -33,7 +33,8 @@ The northeast monsoon, which brings Chennai most of its rain, starts in October.
 | **What would it have said in 2023?** | Replay Cyclone Michaung and three other storms through the same rules |
 | **Tell me when it matters** | The whole city is reassessed every three hours, and an email goes out when risk appears |
 
-The interface is in English and Tamil.
+The interface is in English and Tamil, in a light and a dark theme, and is laid out for a
+phone first. Five pages: the landing page, Check, Replay, Prepare and How it works.
 
 ## 3. How it decides
 
@@ -212,6 +213,9 @@ aws lambda invoke --function-name <SnapshotFunctionName> --payload '{"date":"202
 | What to do | Based on the [National Disaster Management Authority](https://ndma.gov.in/Natural-Hazards/Floods/Dos-Donts)'s flood guidance | |
 | Helplines | [Tamil Nadu State Disaster Management Authority](https://www.tnsdma.tn.gov.in/app/webroot/img/2022/DisasterTelephoneBook_2023.pdf) directory | |
 | Map tiles | OpenStreetMap contributors | ODbL |
+| Illustrations | [unDraw](https://undraw.co), recoloured | unDraw licence |
+| Typefaces | Plus Jakarta Sans and Noto Sans Tamil | SIL Open Font Licence |
+| Icons | [Phosphor](https://phosphoricons.com) | MIT |
 
 The code is under the MIT licence.
 
@@ -220,5 +224,5 @@ The code is under the MIT licence.
 Built by team DoodleByte during the event.
 
 We used Claude Code (Anthropic) as an AI pair programmer for the code, tests, infrastructure
-template and documentation. The deploy script for the dashboard is adapted from our own
-earlier project. Vellam's own answers come from fixed rules, never from a model.
+template and documentation. Two things come from our own earlier projects: the deploy script
+for the dashboard, and the cloud mascot, which is recoloured to red here. Vellam's own answers come from fixed rules, never from a model.
