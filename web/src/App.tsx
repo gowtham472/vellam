@@ -233,6 +233,10 @@ function Footer() {
           <a href="https://github.com/osm-in/flood-map">osm-in/flood-map</a>. Illustrations:{' '}
           <a href="https://undraw.co">unDraw</a>.
         </p>
+        <p className="footer-credits">
+          Built by team DoodleByte: Gowtham K, Jaya Suriya T R, Pranav A S and Kannan K. Code on{' '}
+          <a href="https://github.com/gowtham472/vellam">GitHub</a>.
+        </p>
       </div>
     </footer>
   );

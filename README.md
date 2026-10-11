@@ -221,7 +221,12 @@ The code is under the MIT licence.
 
 ## 11. Team and tools
 
-Built by team DoodleByte during the event.
+Built by team **DoodleByte** during the event:
+
+- Gowtham K, team lead
+- Jaya Suriya T R
+- Pranav A S
+- Kannan K
 
 We used Claude Code (Anthropic) as an AI pair programmer for the code, tests, infrastructure
 template and documentation. Two things come from our own earlier projects: the deploy script
