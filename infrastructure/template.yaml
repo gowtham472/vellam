@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Vellam. Street-level flood risk for Chennai: an API that assesses a place from the rain
+  forecast, the terrain and the record of past floods, a scheduled job that assesses every
+  locality and raises an alert, and the dashboard that shows both.
+
+Parameters:
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: Origin allowed to call the API from a browser.
+  ExistingAmplifyAppId:
+    Type: String
+    Default: ''
+    Description: >
+      Amplify app to publish the dashboard to as a branch. Leave empty to create a new app.
+      New AWS accounts are limited to very few Amplify apps, so an account that already
+      hosts one can reuse it; each branch still gets its own address.
+  DashboardBranchName:
+    Type: String
+    Default: main
+    Description: Amplify branch the dashboard is published to, which becomes its subdomain.
+
+Conditions:
+  CreateAmplifyApp: !Equals [!Ref ExistingAmplifyAppId, '']
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    Handler: index.handler
+    MemorySize: 1024
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref Table
+        ALERT_TOPIC_ARN: !Ref AlertTopic
+        NODE_OPTIONS: --enable-source-maps
+
+Resources:
+  # One table holds four kinds of item, told apart by partition key: terrain kept for good,
+  # assessments kept for the hour, residents' reports kept for 48 hours, and city snapshots.
+  # Items with expiresAt are removed by DynamoDB, so nothing needs a cleanup job.
+  Table:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Vellam flood alerts
+
+  # The API has no sign-in, because a flood warning that needs an account is one fewer
+  # people read. Throttling bounds what an anonymous caller can spend, and what Vellam asks
+  # of the free weather service behind it.
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 2
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods:
+          - GET
+          - POST
+        AllowHeaders:
+          - content-type
+        MaxAge: 600
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../engine/dist/handlers/api
+      Timeout: 29
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+        - Statement:
+            - Sid: SubscribeToAlerts
+              Effect: Allow
+              Action: sns:Subscribe
+              Resource: !Ref AlertTopic
+      Events:
+        Places:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /places }
+        Assess:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /assess }
+        TrackRecord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /track-record }
+        City:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /city }
+        ListReports:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /reports }
+        CreateReport:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /reports }
+        Subscribe:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /alerts }
+
+  # Assesses every locality every three hours. The forecast is refreshed more often than
+  # that, but a resident deciding whether to move a car does not need more, and three hours
+  # keeps the job well inside the weather service's daily allowance.
+  SnapshotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../engine/dist/handlers/snapshot
+      Timeout: 300
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt AlertTopic.TopicName
+      Events:
+        EveryThreeHours:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(3 hours)
+            Description: Refreshes the Vellam city snapshot and raises an alert when risk appears
+
+  DashboardApp:
+    Type: AWS::Amplify::App
+    Condition: CreateAmplifyApp
+    Properties:
+      Name: vellam
+      Description: Vellam dashboard
+
+  DashboardBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !If [CreateAmplifyApp, !GetAtt DashboardApp.AppId, !Ref ExistingAmplifyAppId]
+      BranchName: !Ref DashboardBranchName
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the Vellam API
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  DashboardAppId:
+    Description: Amplify app that hosts the dashboard
+    Value: !If [CreateAmplifyApp, !GetAtt DashboardApp.AppId, !Ref ExistingAmplifyAppId]
+  DashboardBranchName:
+    Description: Amplify branch the dashboard is published to
+    Value: !GetAtt DashboardBranch.BranchName
+  DashboardUrl:
+    Description: Public URL of the dashboard
+    Value: !Sub
+      - https://${DashboardBranchName}.${AppId}.amplifyapp.com
+      - AppId: !If [CreateAmplifyApp, !GetAtt DashboardApp.AppId, !Ref ExistingAmplifyAppId]
+  SnapshotFunctionName:
+    Description: Function to invoke by hand to store the replay of a past storm
+    Value: !Ref SnapshotFunction
+  AlertTopicArn:
+    Description: SNS topic that carries flood alerts
+    Value: !Ref AlertTopic
