@@ -112,6 +112,9 @@ Resources:
         City:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /city }
+        Reservoirs:
+          Type: HttpApi
+          Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /reservoirs }
         ListReports:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: GET, Path: /reports }

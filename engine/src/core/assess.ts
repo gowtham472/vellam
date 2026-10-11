@@ -1,5 +1,6 @@
 import { median } from './geo.ts';
 import { classifyDailyRain, describeRainClass, IMD_CLASSIFICATION_URL, rainBefore, roundMm } from './rain.ts';
+import { reservoirFactor, type RiverExposure } from './reservoirs.ts';
 import type {
   Assessment,
   Evidence,
@@ -76,11 +77,15 @@ export interface AssessmentInput {
   readonly nearestWater?: NearestWater;
   /** Metres to the nearest street marked as flooded in December 2015, when within a kilometre. */
   readonly floodedStreetMetres?: number;
+  /** The reservoir upstream, when the place is beside a river one empties into. */
+  readonly riverExposure?: RiverExposure;
 }
 
 export function assess(input: AssessmentInput): Assessment {
   const { point, series, nowIndex, basis, terrain, mapped, nearestWater, floodedStreetMetres } = input;
   const factors = placeFactors(terrain, nearestWater, floodedStreetMetres);
+  const reservoir = reservoirFactor(input.riverExposure);
+  if (reservoir !== undefined) factors.push(reservoir);
   const soaked = saturationFactor(series, nowIndex, basis);
   if (soaked !== undefined) factors.push(soaked);
   const susceptibility = susceptibilityOf(factors);

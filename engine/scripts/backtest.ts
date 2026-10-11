@@ -15,6 +15,7 @@ import { assessPlace, type ServiceDependencies } from '../src/api/service.ts';
 import type { Assessment, Level } from '../src/core/types.ts';
 import placesData from '../src/data/chennai-places.json' with { type: 'json' };
 import { fetchForecast, fetchForecastHistory, fetchReplay, fetchTerrain } from '../src/sources/open-meteo.ts';
+import { fetchReservoirs } from '../src/sources/reservoirs.ts';
 
 const DATE = process.argv.find((arg) => /^\d{4}-\d{2}-\d{2}$/.test(arg)) ?? '2023-12-04';
 const PAUSE_MS = 1500;
@@ -61,6 +62,7 @@ const deps: ServiceDependencies = {
   fetchReplay,
   fetchTerrain,
   fetchForecastHistory,
+  fetchReservoirs,
   now: () => new Date(),
   newId: () => 'backtest',
 };

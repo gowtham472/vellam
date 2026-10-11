@@ -17,8 +17,9 @@ function rain(mmPerHour: number): HourlyRain[] {
 interface Harness extends ServiceDependencies {
   fetchForecast: ServiceDependencies["fetchForecast"];
   repository: MemoryRepository;
-  alerts: { subject: string; message: string }[];
-  subscribed: string[];
+  alerts: { topic: string; subject: string; message: string }[];
+  subscribed: { email: string; street: string | undefined }[];
+  taken: boolean;
   mmPerHour: number;
 }
 
@@ -29,18 +30,21 @@ function dependencies(mmPerHour: number): Harness {
     mmPerHour,
     alerts: [],
     subscribed: [],
+    taken: false,
     repository: new MemoryRepository(),
     fetchForecast: () => Promise.resolve({ series: rain(harness.mmPerHour), nowIndex: 85 }),
     fetchReplay: () => Promise.resolve({ series: rain(12), nowIndex: 72 }),
     fetchTerrain: () => Promise.resolve({ elevation: 9, surroundings: [8, 9, 10, 9] }),
     fetchForecastHistory: () => Promise.resolve([]),
-    publishAlert: (subject, message) => {
-      harness.alerts.push({ subject, message });
+    fetchReservoirs: () => Promise.resolve({ asOn: '2026-10-09', readings: [] }),
+    publishAlert: (topic, subject, message) => {
+      harness.alerts.push({ topic, subject, message });
       return Promise.resolve();
     },
-    subscribeToAlerts: (email) => {
-      harness.subscribed.push(email);
-      return Promise.resolve();
+    subscribeToAlerts: (email, street) => {
+      if (harness.taken) return Promise.resolve(false);
+      harness.subscribed.push({ email, street });
+      return Promise.resolve(true);
     },
     now: () => NOW,
     newId: () => 'id',
@@ -55,6 +59,8 @@ describe('buildSnapshot', () => {
     expect(snapshot.places.length).toBeGreaterThan(60);
     expect(snapshot.places.every((place) => place.level === 'LOW')).toBe(true);
     expect(snapshot.from).toBe('2026-10-11T13:00');
+    expect(snapshot.windowStarts).toHaveLength(8);
+    expect(snapshot.places[0]?.timeline).toHaveLength(8);
     const served = await routeRequest(deps, { method: 'GET', path: '/city', query: {} });
     expect((served.body as Snapshot).places).toHaveLength(snapshot.places.length);
   });
@@ -71,10 +77,11 @@ describe('buildSnapshot', () => {
     deps.mmPerHour = 9;
     // The hourly cache would otherwise serve the dry assessments again.
     deps.repository = new MemoryRepository();
-    await deps.repository.saveSnapshot('LIVE', { basis: 'FORECAST', from: '', generatedAt: '', places: [], missing: [] });
+    await deps.repository.saveSnapshot('LIVE', { basis: 'FORECAST', from: '', generatedAt: '', windowStarts: [], places: [], missing: [] });
     await buildSnapshot(deps);
     await buildSnapshot(deps);
     expect(deps.alerts).toHaveLength(1);
+    expect(deps.alerts[0]?.topic).toBe('CITY');
     expect(deps.alerts[0]?.subject).toMatch(/^Vellam: flooding likely in \d+ Chennai localities$/);
     expect(deps.alerts[0]?.message).toContain('Velachery');
   });
@@ -115,7 +122,41 @@ describe('POST /alerts', () => {
     const deps = dependencies(0);
     const response = await routeRequest(deps, { method: 'POST', path: '/alerts', query: {}, body: JSON.stringify({ email: 'resident@example.com' }) });
     expect(response.status).toBe(202);
-    expect(deps.subscribed).toEqual(['resident@example.com']);
+    expect(deps.subscribed).toEqual([{ email: 'resident@example.com', street: undefined }]);
+  });
+
+  it('watches one street, storing the place without the address', async () => {
+    const deps = dependencies(0);
+    const response = await routeRequest(deps, {
+      method: 'POST',
+      path: '/alerts',
+      query: {},
+      body: JSON.stringify({ email: 'resident@example.com', lat: 12.97561, lon: 80.22069, name: 'Velachery' }),
+    });
+    expect(response.status).toBe(202);
+    expect(deps.subscribed).toEqual([{ email: 'resident@example.com', street: '12.976,80.221' }]);
+    expect([...deps.repository.watches.values()]).toEqual([{ key: '12.976,80.221', point: { lat: 12.97561, lon: 80.22069 }, name: 'Velachery' }]);
+    expect(JSON.stringify([...deps.repository.watches.values()])).not.toContain('resident@example.com');
+  });
+
+  it('tells an address that is already subscribed how to change its street', async () => {
+    const deps = dependencies(0);
+    deps.taken = true;
+    const response = await routeRequest(deps, { method: 'POST', path: '/alerts', query: {}, body: JSON.stringify({ email: 'resident@example.com', lat: 12.97, lon: 80.22 }) });
+    expect(response.status).toBe(409);
+    expect(deps.repository.watches.size).toBe(0);
+  });
+
+  it('alerts the watchers of a street once when it reaches high risk', async () => {
+    const deps = dependencies(9);
+    await deps.repository.saveWatch({ key: '12.976,80.221', point: { lat: 12.9756, lon: 80.2207 }, name: 'Velachery' });
+    await buildSnapshot(deps);
+    await buildSnapshot(deps);
+    const street = deps.alerts.filter((alert) => alert.topic === '12.976,80.221');
+    expect(street).toHaveLength(1);
+    expect(street[0]?.subject).toMatch(/^Vellam: (HIGH|SEVERE) flood risk at Velachery$/);
+    expect(street[0]?.message).toContain('What to do:');
+    expect(deps.repository.watches.get('12.976,80.221')?.lastLevel).toMatch(/HIGH|SEVERE/);
   });
 
   it('rejects something that is not an email address', async () => {

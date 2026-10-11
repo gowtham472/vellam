@@ -8,6 +8,7 @@ import { MemoryRepository } from '../src/api/repository.ts';
 import { routeRequest } from '../src/api/router.ts';
 import type { ServiceDependencies } from '../src/api/service.ts';
 import { fetchForecast, fetchForecastHistory, fetchReplay, fetchTerrain } from '../src/sources/open-meteo.ts';
+import { fetchReservoirs } from '../src/sources/reservoirs.ts';
 
 const PORT = 8787;
 
@@ -17,6 +18,7 @@ const deps: ServiceDependencies = {
   fetchReplay,
   fetchTerrain,
   fetchForecastHistory,
+  fetchReservoirs,
   now: () => new Date(),
   newId: () => randomUUID(),
 };

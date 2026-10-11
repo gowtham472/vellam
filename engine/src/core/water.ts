@@ -54,3 +54,15 @@ export function nearestFloodedStreet(history: FloodHistory, point: Point): numbe
   }
   return best === undefined ? undefined : Math.round(best);
 }
+
+/** Metres to the nearest mapped water whose name matches, or undefined when none is within five kilometres. */
+export function nearestNamedWater(map: WaterMap, point: Point, pattern: RegExp): number | undefined {
+  const matching = new Set(map.names.flatMap((name, index) => (pattern.test(name) ? [index] : [])));
+  let best: number | undefined;
+  for (const [lat, lon, nameIndex] of map.points) {
+    if (!matching.has(nameIndex) || Math.abs(lat - point.lat) > 0.045) continue;
+    const distance = distanceMetres(point, { lat, lon });
+    if (best === undefined || distance < best) best = distance;
+  }
+  return best === undefined ? undefined : Math.round(best);
+}

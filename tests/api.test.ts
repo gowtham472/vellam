@@ -4,6 +4,7 @@ import { MemoryRepository, placeKey, reportCellsAround } from '../engine/src/api
 import { routeRequest } from '../engine/src/api/router.ts';
 import type { PlaceView, ServiceDependencies, TrackRecordResult } from '../engine/src/api/service.ts';
 import type { HourlyRain, WaterReport } from '../engine/src/core/types.ts';
+import waterData from '../engine/src/data/chennai-water.json' with { type: 'json' };
 
 const NOW = new Date('2026-10-11T08:00:00Z'); // 13:30 in Chennai
 const VELACHERY = { lat: '12.9756', lon: '80.2207' };
@@ -32,6 +33,7 @@ function dependencies(overrides: Partial<ServiceDependencies> = {}): ServiceDepe
     },
     fetchForecastHistory: () =>
       Promise.resolve(Array.from({ length: 48 }, (_, i) => ({ time: addHours('2026-10-09T00:00', i), observedMm: i < 24 ? 4 : 0, dayAheadMm: 1 }))),
+    fetchReservoirs: () => Promise.resolve({ asOn: '2026-10-09', readings: [] }),
     now: () => NOW,
     newId: () => `report-${String((id += 1))}`,
     ...overrides,
@@ -91,7 +93,68 @@ describe('GET /assess', () => {
   });
 });
 
+describe('reservoirs', () => {
+  // A real point on the Adyar from the water map, so the test uses the map the service uses.
+  const adyar = waterData.points.find((point) => waterData.names[point[2] ?? -1] === 'Adyar River') ?? [0, 0];
+  const beside = { lat: String(adyar[0]), lon: String(adyar[1]) };
+  const releasing = { asOn: '2015-12-02', readings: [{ name: 'CHEMBARAMBAKKAM', capacityMcft: 3645, storageMcft: 3396, storagePercent: 93.17, inflowCusecs: 26000, outflowCusecs: 29000 }] };
+
+  it('warns a street beside the Adyar when Chembarambakkam is releasing heavily', async () => {
+    const deps = dependencies({ fetchReservoirs: () => Promise.resolve(releasing) });
+    const { body } = await get<PlaceView>(deps, '/assess', beside);
+    expect(body.assessment.factors.map((factor) => factor.id)).toContain('RESERVOIR');
+    expect(body.assessment.evidence.some((item) => item.source === 'RESERVOIR' && item.statement.includes('29,000 cusecs'))).toBe(true);
+  });
+
+  it('asks for the bulletin from inside the replayed 48 hours, and only for streets beside a river', async () => {
+    const asked: (string | undefined)[] = [];
+    const deps = dependencies({
+      fetchReservoirs: (date) => {
+        asked.push(date);
+        return Promise.resolve(releasing);
+      },
+    });
+    await get(deps, '/assess', { ...beside, date: '2015-12-01' });
+    await get(deps, '/assess', { lat: '13.1240', lon: '80.2120' });
+    expect(asked).toEqual(['2015-12-02']);
+  });
+
+  it('still answers when the bulletin cannot be read', async () => {
+    const deps = dependencies({ fetchReservoirs: () => Promise.reject(new Error('timed out')) });
+    const { status, body } = await get<PlaceView>(deps, '/assess', beside);
+    expect(status).toBe(200);
+    expect(body.assessment.factors.map((factor) => factor.id)).not.toContain('RESERVOIR');
+  });
+
+  it('serves the bulletin and fetches it once', async () => {
+    let fetched = 0;
+    const deps = dependencies({
+      fetchReservoirs: () => {
+        fetched += 1;
+        return Promise.resolve(releasing);
+      },
+    });
+    const first = await get<{ asOn: string }>(deps, '/reservoirs', {});
+    await get(deps, '/reservoirs', {});
+    expect(first.body.asOn).toBe('2015-12-02');
+    expect(fetched).toBe(1);
+  });
+});
+
 describe('reports', () => {
+  it('raises a dry forecast to high once two neighbours report knee deep water nearby', async () => {
+    const deps = dependencies({ fetchForecast: () => Promise.resolve({ series: rain(0), nowIndex: 85 }) });
+    const send = () => routeRequest(deps, { method: 'POST', path: '/reports', query: {}, body: JSON.stringify({ lat: 12.9758, lon: 80.2209, depth: 'KNEE' }) });
+    expect((await get<PlaceView>(deps, '/assess', VELACHERY)).body.assessment.level).toBe('LOW');
+    await send();
+    expect((await get<PlaceView>(deps, '/assess', VELACHERY)).body.assessment.level).toBe('WATCH');
+    await send();
+    const after = (await get<PlaceView>(deps, '/assess', VELACHERY)).body;
+    expect(after.assessment.level).toBe('HIGH');
+    expect(after.assessment.raisedByReports).toBe(true);
+    expect(after.guidance.en.headline).toBe('Flooding is likely here');
+  });
+
   it('stores a report and returns it to people nearby, newest first', async () => {
     const deps = dependencies();
     const created = await routeRequest(deps, { method: 'POST', path: '/reports', query: {}, body: JSON.stringify({ lat: 12.9761, lon: 80.2211, depth: 'KNEE' }) });

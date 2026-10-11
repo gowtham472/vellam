@@ -1,6 +1,7 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import type { Assessment, Point, Snapshot, Terrain, WaterReport } from '../core/types.ts';
+import type { ReservoirReport } from '../core/reservoirs.ts';
+import type { Assessment, Point, Snapshot, Terrain, Watch, WaterReport } from '../core/types.ts';
 
 /** How long a resident's report stays on the map. Floodwater in a street is news for hours, not days. */
 export const REPORT_LIFETIME_HOURS = 48;
@@ -20,6 +21,12 @@ export interface Repository {
   /** `key` is `LIVE` for the current forecast or a date for a replay. */
   getSnapshot(key: string): Promise<Snapshot | undefined>;
   saveSnapshot(key: string, snapshot: Snapshot): Promise<void>;
+  saveWatch(watch: Watch): Promise<void>;
+  listWatches(limit: number): Promise<Watch[]>;
+  /** `key` is `LIVE` for today's bulletin or a date for a past one. */
+  getReservoirs(key: string): Promise<ReservoirReport | undefined>;
+  /** Today's bulletin is kept for `hours`; a past one never changes and is kept for good. */
+  saveReservoirs(key: string, report: ReservoirReport, now: Date, hours?: number): Promise<void>;
 }
 
 /** Places are keyed to about 110 m, a little coarser than the 90 m elevation grid. */
@@ -51,6 +58,26 @@ export class MemoryRepository implements Repository {
   private readonly assessments = new Map<string, Assessment>();
   readonly reports: WaterReport[] = [];
   readonly snapshots = new Map<string, Snapshot>();
+  readonly reservoirs = new Map<string, ReservoirReport>();
+  readonly watches = new Map<string, Watch>();
+
+  saveWatch(watch: Watch): Promise<void> {
+    this.watches.set(watch.key, watch);
+    return Promise.resolve();
+  }
+
+  listWatches(limit: number): Promise<Watch[]> {
+    return Promise.resolve([...this.watches.values()].slice(0, limit));
+  }
+
+  getReservoirs(key: string): Promise<ReservoirReport | undefined> {
+    return Promise.resolve(this.reservoirs.get(key));
+  }
+
+  saveReservoirs(key: string, report: ReservoirReport): Promise<void> {
+    this.reservoirs.set(key, report);
+    return Promise.resolve();
+  }
 
   getSnapshot(key: string): Promise<Snapshot | undefined> {
     return Promise.resolve(this.snapshots.get(key));
@@ -165,6 +192,34 @@ export class DynamoRepository implements Repository {
 
   async saveSnapshot(key: string, snapshot: Snapshot): Promise<void> {
     await this.client.send(new PutCommand({ TableName: this.table, Item: { pk: 'SNAPSHOT', sk: key, snapshot } }));
+  }
+
+  async saveWatch(watch: Watch): Promise<void> {
+    await this.client.send(new PutCommand({ TableName: this.table, Item: { pk: 'WATCH', sk: watch.key, watch } }));
+  }
+
+  async listWatches(limit: number): Promise<Watch[]> {
+    const page = await this.client.send(
+      new QueryCommand({ TableName: this.table, KeyConditionExpression: 'pk = :pk', ExpressionAttributeValues: { ':pk': 'WATCH' }, Limit: limit }),
+    );
+    return (page.Items ?? []).map((item) => item['watch'] as Watch);
+  }
+
+  async getReservoirs(key: string): Promise<ReservoirReport | undefined> {
+    const item = await this.get('RESERVOIRS', key);
+    // An expired item can outlive its time by days before DynamoDB removes it.
+    const expiresAt = item?.['expiresAt'];
+    if (typeof expiresAt === 'number' && expiresAt < Date.now() / 1000) return undefined;
+    return item?.['report'] as ReservoirReport | undefined;
+  }
+
+  async saveReservoirs(key: string, report: ReservoirReport, now: Date, hours?: number): Promise<void> {
+    await this.client.send(
+      new PutCommand({
+        TableName: this.table,
+        Item: { pk: 'RESERVOIRS', sk: key, report, ...(hours === undefined ? {} : { expiresAt: epochSeconds(now, hours) }) },
+      }),
+    );
   }
 
   private async get(pk: string, sk: string): Promise<Record<string, unknown> | undefined> {

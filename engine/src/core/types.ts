@@ -15,7 +15,7 @@ export type RainClass = 'LIGHT' | 'MODERATE' | 'HEAVY' | 'VERY_HEAVY' | 'EXTREME
 export type Level = 'LOW' | 'WATCH' | 'HIGH' | 'SEVERE';
 
 /** Where a fact came from, so a reader can tell a measurement from a forecast from a judgement. */
-export type EvidenceSource = 'FORECAST' | 'OBSERVED' | 'TERRAIN' | 'MAP' | 'HISTORY' | 'JUDGEMENT';
+export type EvidenceSource = 'FORECAST' | 'OBSERVED' | 'TERRAIN' | 'MAP' | 'HISTORY' | 'RESERVOIR' | 'REPORT' | 'JUDGEMENT';
 
 export interface Evidence {
   readonly source: EvidenceSource;
@@ -36,7 +36,7 @@ export interface NearestWater {
   readonly distanceMetres: number;
 }
 
-export type FactorId = 'FLOODED_BEFORE' | 'LOW_GROUND' | 'DEPRESSION' | 'NEAR_WATER' | 'SATURATED' | 'RAISED_GROUND';
+export type FactorId = 'FLOODED_BEFORE' | 'RESERVOIR' | 'LOW_GROUND' | 'DEPRESSION' | 'NEAR_WATER' | 'SATURATED' | 'RAISED_GROUND';
 
 /**
  * Something about the place, or the days before, that changes what the same rain does.
@@ -80,6 +80,8 @@ export interface Assessment {
   readonly floodedStreetMetres?: number;
   /** False when the place is outside the area the Chennai maps cover. */
   readonly mapped: boolean;
+  /** True when neighbours' reports of water, not the forecast, set the level. */
+  readonly raisedByReports?: boolean;
 }
 
 export type RainVerdict = 'MATCHED' | 'UNDER_FORECAST' | 'OVER_FORECAST';
@@ -112,6 +114,8 @@ export interface PlaceSummary {
   /** The most rain in any 24 hours of the period assessed. */
   readonly worst24hMm: number;
   readonly factors: readonly string[];
+  /** The level in each six hour window, in order, so the map can be played through time. */
+  readonly timeline: readonly Level[];
 }
 
 /** Every listed locality assessed at one moment, or for one past date. */
@@ -120,7 +124,18 @@ export interface Snapshot {
   /** Local time the assessments start from. */
   readonly from: string;
   readonly generatedAt: string;
+  /** When each six hour window starts, shared by every place's timeline. */
+  readonly windowStarts: readonly string[];
   readonly places: readonly PlaceSummary[];
   /** Localities left out because the weather or terrain source failed twice for them. */
   readonly missing: readonly string[];
+}
+
+/** A street somebody asked to be told about. It holds a place and nothing about the person. */
+export interface Watch {
+  readonly key: string;
+  readonly point: Point;
+  readonly name: string;
+  /** The level at the last check, so an alert goes out when risk appears and not while it lasts. */
+  readonly lastLevel?: Level;
 }

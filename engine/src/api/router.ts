@@ -6,6 +6,7 @@ import {
   readDate,
   readPoint,
   reportsAround,
+  reservoirsFor,
   subscribe,
   trackRecord,
   viewPlace,
@@ -47,6 +48,8 @@ export async function routeRequest(deps: ServiceDependencies, request: ApiReques
         return { status: 200, body: await reportsAround(deps, readPoint(request.query)) };
       case 'POST /reports':
         return { status: 201, body: await createReport(deps, parseBody(request.body)) };
+      case 'GET /reservoirs':
+        return { status: 200, body: await reservoirsFor(deps, readDate(request.query['date'])) };
       case 'GET /city':
         return { status: 200, body: await citySnapshot(deps, readDate(request.query['date'])) };
       case 'POST /alerts':
