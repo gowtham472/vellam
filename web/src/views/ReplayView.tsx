@@ -42,8 +42,8 @@ export function ReplayView() {
         {language !== 'en' && <p className="muted">{t('howNote')}</p>}
         <ul className="prose-list">
           <li>
-            Given the rain on record for 4 December 2023, Vellam rated <strong>50</strong> of 65 localities severe,{' '}
-            <strong>12</strong> high and <strong>3</strong> watch.
+            Given the rain on record for 4 December 2023, Vellam rated <strong>51</strong> of 65 localities severe,{' '}
+            <strong>11</strong> high and <strong>3</strong> watch.
           </li>
           <li>
             Relief agencies and the press named 17 of those localities as flooded. Vellam rated <strong>16</strong> of them high

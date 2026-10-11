@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Street-level flood risk for Chennai that explains itself and checks its own forecasts",
+  "description": "Street-level flood risk for India that explains itself and checks its own forecasts",
   "workspaces": ["engine", "web"],
   "engines": { "node": ">=22.18" },
   "scripts": {

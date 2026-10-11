@@ -68,7 +68,8 @@ export function PrepareView() {
           ))}
         </div>
         <p className="muted">
-          Numbers from the <a href={HELPLINE_SOURCE}>Tamil Nadu State Disaster Management Authority</a> directory.
+          112 and 1078 answer anywhere in India. 1070 and 1913 are from the{' '}
+          <a href={HELPLINE_SOURCE}>Tamil Nadu State Disaster Management Authority</a> directory; 1913 is Chennai's own line.
         </p>
       </section>
 

@@ -5,10 +5,10 @@ import { LEVEL } from '../level.ts';
 import type { Level } from '../../../engine/src/core/types.ts';
 
 const FACTORS: readonly [string, string, string][] = [
-  ['This street flooded in 2015', 'A street residents marked as flooded is within 60 m', '+2'],
-  ['Streets nearby flooded in 2015', 'One is within 200 m', '+1'],
-  ['Reservoir upstream is releasing heavily', 'Within 500 m of the Adyar or the Kosasthalaiyar, and the reservoir above it is releasing 3,000 cusecs or more', '+2'],
-  ['Reservoir upstream is nearly full', 'Within 500 m of one of those rivers, and the reservoir is at least 80% full', '+1'],
+  ['This street flooded in 2015', 'Chennai only. A street residents marked as flooded is within 60 m', '+2'],
+  ['Streets nearby flooded in 2015', 'Chennai only. One is within 200 m', '+1'],
+  ['Reservoir upstream is releasing heavily', 'Chennai only. Within 500 m of the Adyar or the Kosasthalaiyar, and the reservoir above it is releasing 3,000 cusecs or more', '+2'],
+  ['Reservoir upstream is nearly full', 'Chennai only. Within 500 m of one of those rivers, and the reservoir is at least 80% full', '+1'],
   ['Close to a water body', 'A lake, marsh, river or canal within 300 m. Within 100 m counts double', '+1 or +2'],
   ['Low ground', 'Five metres above sea level or less', '+1'],
   ['Lower than its surroundings', 'At least five metres below the ground a kilometre around', '+1'],
@@ -105,6 +105,13 @@ export function HowView() {
           </table>
         </div>
         <p className="muted">A total of 0 or less is no exposure, 1 is some, 2 or more is high.</p>
+        <p>
+          <strong>Two depths of answer.</strong> Chennai has all nine factors: its 2015 flooded streets, its water bodies and
+          its reservoirs are held in Vellam. Anywhere else in India the answer uses the five that need no local record:
+          water within a kilometre, read from OpenStreetMap when the place is first asked about, the two measures of ground
+          height, soaked ground and raised ground. Each answer says which it is. When the map of water does not answer
+          within five seconds the answer says water was not assessed, and the next visit asks again.
+        </p>
       </section>
 
       <section className="card">
@@ -136,15 +143,15 @@ export function HowView() {
           </table>
         </div>
         <p>
-          Rain alone can raise the level. The place alone cannot: a low street under a dry sky is not at risk today. There is
-          no machine learning in this path. The same street and the same forecast always give the same answer.
+          Rain alone can raise the level. The place alone cannot: a low street under a dry sky is not at risk today. These
+          rules set every level. The same street, forecast and reports always give the same answer.
         </p>
       </section>
 
       <section className="card">
         <div className="card-head">
           <h2>
-            <UsersThreeIcon weight="fill" aria-hidden="true" /> 4. Two things that overrule the table
+            <UsersThreeIcon weight="fill" aria-hidden="true" /> 4. What overrules the table
           </h2>
         </div>
         <ul className="prose-list">
@@ -153,6 +160,14 @@ export function HowView() {
             whatever the forecast says. Reports are anonymous, so one alone raises the level to watch at most. Two that
             agree on knee deep or more make it high, and two of waist deep make it severe. A report of no water never
             lowers the level.
+          </li>
+          <li>
+            <strong>A photo with a report.</strong> This is the one place a model is used. The photo goes to clef-flash, a
+            decision model hosted by Cloudflare, with two questions: does this show flood water, and how deep. It answers
+            with probabilities. At 80% or more, with knee deep water on a report that says the same, that one report makes
+            the street high, as two reports would. At 20% or less the report is set aside. In between the photo is ignored.
+            One report never makes a street severe, because a photo proves water somewhere, not that it was taken here
+            today. The photo is read once and not stored.
           </li>
           <li>
             <strong>A reservoir letting go.</strong> A street within 500 m of a river taking a release of 3,000 cusecs or
@@ -170,8 +185,8 @@ export function HowView() {
         </div>
         <p>
           For any spot, Vellam shows the last 30 days of day-ahead rain forecasts beside the rain that fell, and says plainly
-          how many matched. The replay runs past storms through the same rules. Neighbours' reports of water stay on the map
-          for 48 hours.
+          how many matched. The replay runs five Chennai storms through the same rules. Forty major cities and 65 Chennai
+          localities are reassessed every three hours, and neighbours' reports of water stay on the map for 48 hours.
         </p>
       </section>
 
@@ -224,10 +239,21 @@ export function HowView() {
             the reservoir's own gauge measured 475 mm, so that replay is nearly dry.
           </li>
           <li>
+            Outside Chennai there is no flood history and no reservoir data, so the answer rests on rain, ground height and
+            nearby water alone.
+          </li>
+          <li>
+            The photo check has not been measured against labelled flood photos. Its thresholds are our judgement, and an
+            old photo of a real flood would pass it. That is why a photo is worth one extra report and no more.
+          </li>
+          <li>
+            The interface is translated into twelve Indian languages by machine. No native speaker has reviewed them.
+          </li>
+          <li>
             The 3D view floods everything below one height, like a bathtub. It shows the shape of the ground and makes no
             claim about how deep water will get.
           </li>
-          <li>Vellam is not an official warning. Follow IMD and Greater Chennai Corporation advisories.</li>
+          <li>Vellam is not an official warning. Follow the India Meteorological Department and your local authority.</li>
         </ul>
       </section>
 
@@ -246,6 +272,14 @@ export function HowView() {
           </li>
           <li>
             Water bodies and locality names: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+            Outside Chennai, water is read from the same map through the Overpass API.
+          </li>
+          <li>
+            Place search: <a href="https://open-meteo.com/en/docs/geocoding-api">Open-Meteo geocoding</a>, from GeoNames.
+          </li>
+          <li>
+            Photo check: <a href="https://developers.cloudflare.com/workers-ai/models/clef-flash/">clef-flash</a> on Cloudflare
+            Workers AI.
           </li>
           <li>
             Reservoir levels: <a href="https://cmwssb.tn.gov.in/lake-level">Chennai Metro Water</a>, daily bulletin.

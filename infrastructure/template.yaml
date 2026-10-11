@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Vellam. Street-level flood risk for Chennai: an API that assesses a place from the rain
+  Vellam. Street-level flood risk for India: an API that assesses a place from the rain
   forecast, the terrain and the record of past floods, a scheduled job that assesses every
-  locality and raises an alert, and the dashboard that shows both.
+  watched place and raises an alert, and the dashboard that shows both.
 
 Parameters:
   AllowedOrigin:
@@ -43,8 +43,9 @@ Globals:
         NODE_OPTIONS: --enable-source-maps
 
 Resources:
-  # One table holds four kinds of item, told apart by partition key: terrain kept for good,
-  # assessments kept for the hour, residents' reports kept for 48 hours, and city snapshots.
+  # One table holds every kind of item, told apart by partition key: terrain and nearby water
+  # kept for good, assessments kept for the hour, residents' reports kept for 48 hours,
+  # snapshots, reservoir bulletins and watched streets.
   # Items with expiresAt are removed by DynamoDB, so nothing needs a cleanup job.
   Table:
     Type: AWS::DynamoDB::Table
@@ -133,7 +134,7 @@ Resources:
           Type: HttpApi
           Properties: { ApiId: !Ref HttpApi, Method: POST, Path: /alerts }
 
-  # Assesses every locality every three hours. The forecast is refreshed more often than
+  # Assesses every watched place every three hours. The forecast is refreshed more often than
   # that, but a resident deciding whether to move a car does not need more, and three hours
   # keeps the job well inside the weather service's daily allowance.
   SnapshotFunction:
