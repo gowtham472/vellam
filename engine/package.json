@@ -1,0 +1,21 @@
+{
+  "name": "@vellam/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { "./types": "./src/core/types.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1135.0",
+    "@aws-sdk/client-sns": "^3.1135.0",
+    "@aws-sdk/lib-dynamodb": "^3.1135.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.163",
+    "@types/node": "^22.18.0",
+    "esbuild": "^0.28.2"
+  }
+}
