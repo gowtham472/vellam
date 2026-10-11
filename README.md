@@ -204,8 +204,8 @@ flowchart LR
 | IAM | The API function can read and write its table and subscribe to the topic. Only the snapshot function can publish |
 
 Everything is pay per request, and at this project's traffic sits inside the free tier.
-The photo check is the only call that leaves AWS: the model's weights are open (Apache-2.0)
-but need about 64 GB of GPU memory, and a new AWS account has no GPU quota.
+The photo check is the only call that leaves AWS. Running the model ourselves needs a GPU,
+and this account's GPU quota is zero.
 
 There is no queue or stream in this design, on purpose. The work is one request at a time and
 one scheduled job every three hours, and the real ceiling is the free weather source's
