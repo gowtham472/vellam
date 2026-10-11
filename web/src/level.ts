@@ -1,5 +1,5 @@
 import { CheckCircleIcon, EyeIcon, SirenIcon, WarningIcon, type Icon } from '@phosphor-icons/react';
-import type { Level } from '../../engine/src/core/types.ts';
+import type { EvidenceSource, Level } from '../../engine/src/core/types.ts';
 import type { Mood } from './components/Mascot.tsx';
 
 /**
@@ -15,3 +15,15 @@ export const LEVEL: Record<Level, { colour: string; icon: Icon; mood: Mood }> = 
 };
 
 export const LEVELS: readonly Level[] = ['SEVERE', 'HIGH', 'WATCH', 'LOW'];
+
+/** The label beside each fact, saying what kind of thing it is. */
+export const SOURCE_LABEL: Record<EvidenceSource, string> = {
+  FORECAST: 'Forecast',
+  OBSERVED: 'Measured',
+  TERRAIN: 'Terrain',
+  MAP: 'Map',
+  HISTORY: '2015 record',
+  RESERVOIR: 'Reservoir',
+  REPORT: 'Neighbours',
+  JUDGEMENT: 'Judgement',
+};

@@ -10,6 +10,8 @@ interface Props {
   /** A single place to centre on and mark, for the place page. */
   readonly focus?: { point: Point; level: Level };
   readonly reports?: readonly WaterReport[];
+  /** Which six hour window to colour the localities by. Without it, their worst level. */
+  readonly frame?: number;
   readonly onPick: (point: Point) => void;
 }
 
@@ -17,7 +19,7 @@ interface Props {
  * The map is Leaflet driven directly, without a React wrapper: there is one map, its
  * layers are rebuilt when the data changes, and that is all the lifecycle it needs.
  */
-export function CityMap({ places, focus, reports, onPick }: Props) {
+export function CityMap({ places, focus, reports, frame, onPick }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -49,14 +51,15 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
     if (group === null || map.current === null) return;
     group.clearLayers();
     for (const place of places ?? []) {
+      const level = (frame === undefined ? undefined : place.timeline[frame]) ?? place.level;
       L.circleMarker([place.point.lat, place.point.lon], {
         radius: 9,
         color: '#ffffff',
         weight: 2,
-        fillColor: LEVEL[place.level].colour,
+        fillColor: LEVEL[level].colour,
         fillOpacity: 0.95,
       })
-        .bindTooltip(`${place.name}: ${place.level}`, { direction: 'top' })
+        .bindTooltip(`${place.name}: ${level}`, { direction: 'top' })
         .on('click', (event: L.LeafletMouseEvent) => {
           L.DomEvent.stopPropagation(event);
           pick.current(place.point);
@@ -84,7 +87,7 @@ export function CityMap({ places, focus, reports, onPick }: Props) {
       }).addTo(group);
       map.current.setView([focus.point.lat, focus.point.lon], 15);
     }
-  }, [places, focus, reports]);
+  }, [places, focus, reports, frame]);
 
   return <div ref={container} className="map" role="application" aria-label="Map of Chennai" />;
 }

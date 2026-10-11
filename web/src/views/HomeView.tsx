@@ -1,13 +1,13 @@
-import { ArrowRightIcon, ClockCounterClockwiseIcon, MapPinIcon, SealCheckIcon, UsersThreeIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, ClockCounterClockwiseIcon, DropHalfBottomIcon, MapPinIcon, SealCheckIcon, UsersThreeIcon } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import type { PlaceView as PlaceData } from '../../../engine/src/api/service.ts';
 import { levelFor } from '../../../engine/src/core/assess.ts';
 import { classifyDailyRain, describeRainClass } from '../../../engine/src/core/rain.ts';
-import type { EvidenceSource, Level, Snapshot, Susceptibility } from '../../../engine/src/core/types.ts';
+import type { Level, Snapshot, Susceptibility } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { Finder } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
-import { LEVEL } from '../level.ts';
+import { LEVEL, SOURCE_LABEL } from '../level.ts';
 import { STORMS } from '../storms.ts';
 
 const LEVEL_WORD: Record<Level, string> = { LOW: 'Low', WATCH: 'Watch', HIGH: 'High', SEVERE: 'Severe' };
@@ -25,15 +25,6 @@ const DIAL_MAX = 260;
 
 const VELACHERY = { lat: 12.9756, lon: 80.2207 };
 const MICHAUNG = '2023-12-04';
-
-const SOURCE_LABEL: Record<EvidenceSource, string> = {
-  FORECAST: 'Forecast',
-  OBSERVED: 'Measured',
-  TERRAIN: 'Terrain',
-  MAP: 'Map',
-  HISTORY: '2015 record',
-  JUDGEMENT: 'Judgement',
-};
 
 /** What the cloud says before anyone touches the dial: the state of the city, read live. */
 function cityLine(snapshot: Snapshot | undefined): { level: Level; line: string } | undefined {
@@ -194,7 +185,7 @@ export function HomeView() {
 
       <section className="trio">
         <div className="trio-copy">
-          <h2>Three things a forecast cannot tell you</h2>
+          <h2>Four things a forecast cannot tell you</h2>
           <dl>
             <div>
               <dt>
@@ -207,11 +198,20 @@ export function HomeView() {
             </div>
             <div>
               <dt>
+                <DropHalfBottomIcon weight="bold" aria-hidden="true" /> What the reservoir upstream is doing
+              </dt>
+              <dd>
+                On 2 December 2015 Chembarambakkam released 29,000 cusecs into the Adyar. Vellam reads Chennai Metro Water's
+                daily bulletin and warns streets beside the river when a reservoir is nearly full or releasing heavily.
+              </dd>
+            </div>
+            <div>
+              <dt>
                 <UsersThreeIcon weight="bold" aria-hidden="true" /> What your neighbours can see right now
               </dt>
               <dd>
-                Anyone can report water as ankle, knee or waist deep. A report stays on the map for 48 hours and stores
-                nothing about the person.
+                Anyone can report water as ankle, knee or waist deep. Two reports that agree raise the level whatever the
+                forecast says, and a report stores nothing about the person.
               </dd>
             </div>
             <div>

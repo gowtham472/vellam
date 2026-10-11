@@ -1,4 +1,5 @@
 import type { PlaceView, TrackRecordResult } from '../../engine/src/api/service.ts';
+import type { ReservoirReport } from '../../engine/src/core/reservoirs.ts';
 import type { Point, Snapshot, WaterDepth, WaterReport } from '../../engine/src/core/types.ts';
 
 const BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:8787';
@@ -37,10 +38,12 @@ export const api = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...point, depth }),
     }),
-  subscribe: (email: string) =>
+  reservoirs: (date?: string) => request<ReservoirReport>(`/reservoirs${date === undefined ? '' : `?date=${date}`}`),
+  /** Subscribes to city alerts, and to one street when `street` is given. */
+  subscribe: (email: string, street?: { point: Point; name: string }) =>
     request<{ message: string }>('/alerts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(street === undefined ? { email } : { email, ...street.point, name: street.name }),
     }),
 };

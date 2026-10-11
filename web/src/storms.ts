@@ -19,6 +19,13 @@ export const STORMS = [
     summary: 'An ordinary heavy monsoon day: the test of whether Vellam over-warns.',
   },
   {
+    date: '2015-12-01',
+    name: 'The 2015 flood',
+    note: '1 December 2015',
+    summary:
+      'Record rain, then Chembarambakkam released 29,000 cusecs into the Adyar. The streets marked in 2015 come from this flood, so this replay cannot test that record.',
+  },
+  {
     date: '2021-11-11',
     name: 'November deluge',
     note: '11 November 2021',

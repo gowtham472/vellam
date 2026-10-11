@@ -9,7 +9,7 @@ import {
   TranslateIcon,
   type Icon,
 } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Mascot } from './components/Mascot.tsx';
 import { LanguageContext, useText, type Language, type TextKey } from './i18n.ts';
 import { CheckView } from './views/CheckView.tsx';
@@ -19,16 +19,20 @@ import { PlaceView } from './views/PlaceView.tsx';
 import { PrepareView } from './views/PrepareView.tsx';
 import { ReplayView } from './views/ReplayView.tsx';
 
+// The 3D view brings a map engine and the 2015 record with it, so it loads only when opened.
+const TerrainView = lazy(() => import('./views/TerrainView.tsx').then((module) => ({ default: module.TerrainView })));
+
 /**
  * Routes live in the URL hash so a place can be shared as a link and the site needs no
  * server-side routing: `#/`, `#/check`, `#/replay`, `#/replay/2023-12-04`,
- * `#/place/12.97560,80.22070`, `#/place/12.97560,80.22070/2023-12-04`, `#/prepare`, `#/how`.
+ * `#/place/12.97560,80.22070`, `#/place/12.97560,80.22070/2023-12-04`, `#/3d/12.97560,80.22070`,
+ * `#/prepare`, `#/how`.
  */
 type Route =
   | { view: 'home' }
   | { view: 'check'; date?: string }
   | { view: 'replay' }
-  | { view: 'place'; lat: number; lon: number; date?: string }
+  | { view: 'place' | 'terrain'; lat: number; lon: number; date?: string }
   | { view: 'prepare' }
   | { view: 'how' };
 
@@ -46,10 +50,11 @@ function parseRoute(hash: string): Route {
     case 'how':
     case 'about':
       return { view: 'how' };
-    case 'place': {
+    case 'place':
+    case '3d': {
       const [lat, lon] = (parts[1] ?? '').split(',').map(Number);
       if (lat !== undefined && lon !== undefined && Number.isFinite(lat) && Number.isFinite(lon)) {
-        return { view: 'place', lat, lon, ...(parts[2] === undefined ? {} : { date: parts[2] }) };
+        return { view: parts[0] === '3d' ? 'terrain' : 'place', lat, lon, ...(parts[2] === undefined ? {} : { date: parts[2] }) };
       }
       return { view: 'check' };
     }
@@ -59,7 +64,7 @@ function parseRoute(hash: string): Route {
 }
 
 function sectionOf(route: Route): Section {
-  if (route.view === 'place') return route.date === undefined ? 'check' : 'replay';
+  if (route.view === 'place' || route.view === 'terrain') return route.date === undefined ? 'check' : 'replay';
   if (route.view === 'check') return route.date === undefined ? 'check' : 'replay';
   return route.view;
 }
@@ -208,6 +213,15 @@ export function App() {
         {route.view === 'replay' && <ReplayView />}
         {route.view === 'prepare' && <PrepareView />}
         {route.view === 'how' && <HowView />}
+        {route.view === 'terrain' && (
+          <Suspense fallback={<p className="loading">…</p>}>
+            <TerrainView
+              key={`3d,${String(route.lat)},${String(route.lon)},${route.date ?? ''}`}
+              point={{ lat: route.lat, lon: route.lon }}
+              {...(route.date === undefined ? {} : { date: route.date })}
+            />
+          </Suspense>
+        )}
         {route.view === 'place' && (
           <PlaceView
             key={`${String(route.lat)},${String(route.lon)},${route.date ?? ''}`}

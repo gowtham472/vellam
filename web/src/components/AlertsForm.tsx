@@ -1,10 +1,12 @@
 import { PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
+import type { Point } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { useText } from '../i18n.ts';
 import { Mascot } from './Mascot.tsx';
 
-export function AlertsForm() {
+/** Subscribes to alerts for the city, or for one street when `street` is given. */
+export function AlertsForm({ street }: { street?: { point: Point; name: string } }) {
   const { t } = useText();
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<{ ok: boolean; text: string }>();
@@ -15,7 +17,7 @@ export function AlertsForm() {
     setSending(true);
     setMessage(undefined);
     api
-      .subscribe(email)
+      .subscribe(email, street)
       .then(
         (result) => {
           setMessage({ ok: true, text: result.message });
@@ -34,8 +36,8 @@ export function AlertsForm() {
     <section className="alerts-card">
       <Mascot mood={message?.ok === true ? 'wink' : 'happy'} size={96} />
       <div>
-        <h2>{t('alertsTitle')}</h2>
-        <p className="muted">{t('alertsText')}</p>
+        <h2>{t(street === undefined ? 'alertsTitle' : 'streetAlertTitle')}</h2>
+        <p className="muted">{t(street === undefined ? 'alertsText' : 'streetAlertText')}</p>
         <form className="alerts-form" onSubmit={submit}>
           <input
             type="email"

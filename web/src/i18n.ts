@@ -77,6 +77,60 @@ const TEXT = {
   notMapped: { en: 'not mapped here', ta: 'இங்கு வரைபடம் இல்லை' },
   loading: { en: 'Checking', ta: 'சரிபார்க்கிறது' },
 
+  // Reports, reservoirs and alerts
+  raisedByReports: { en: "Raised by neighbours' reports", ta: 'அண்டை வீட்டார் தகவலால் உயர்த்தப்பட்டது' },
+  reservoirsTitle: { en: 'Reservoirs upstream', ta: 'மேல்நிலை நீர்த்தேக்கங்கள்' },
+  reservoirsIntro: {
+    en: 'A release raises the river whether or not it is raining. Chennai Metro Water, as on',
+    ta: 'மழை இல்லாவிட்டாலும் நீர் திறப்பு ஆற்றை உயர்த்தும். சென்னை குடிநீர் வாரியம், நாள்:',
+  },
+  full: { en: 'full', ta: 'நிரம்பியுள்ளது' },
+  releasing: { en: 'releasing', ta: 'வெளியேற்றம்' },
+  cusecs: { en: 'cusecs', ta: 'கன அடி/வினாடி' },
+  streetAlertTitle: { en: 'Tell me when this street is at risk', ta: 'இந்தத் தெரு அபாயத்தில் இருக்கும்போது தெரிவி' },
+  streetAlertText: {
+    en: 'One email when this street reaches High, and when risk appears anywhere in Chennai. The street is stored without your address.',
+    ta: 'இந்தத் தெரு அதிக அபாயத்தை அடையும்போது ஒரு மின்னஞ்சல். தெரு உங்கள் முகவரியின்றி சேமிக்கப்படும்.',
+  },
+  play: { en: 'Play the 48 hours', ta: '48 மணி நேரத்தை இயக்கு' },
+  pause: { en: 'Pause', ta: 'நிறுத்து' },
+  worstOf48: { en: 'Worst of the 48 hours', ta: '48 மணி நேரத்தில் மிக மோசம்' },
+
+  // 3D view
+  see3d: { en: 'See this street in 3D', ta: 'இந்தத் தெருவை 3D-யில் பார்' },
+  backToAnswer: { en: 'Back to the answer', ta: 'பதிலுக்குத் திரும்பு' },
+  terrainTitle: { en: 'This street in 3D', ta: 'இந்தத் தெரு முப்பரிமாணத்தில்' },
+  terrainIntro: {
+    en: 'Real ground heights and buildings. Blue dots are streets residents marked as flooded in December 2015.',
+    ta: 'உண்மையான நில உயரங்களும் கட்டடங்களும். நீலப் புள்ளிகள் 2015 டிசம்பரில் வெள்ளம் வந்ததாக மக்கள் குறித்த தெருக்கள்.',
+  },
+  keyHome: { en: 'This spot', ta: 'இந்த இடம்' },
+  keyFlooded: { en: 'Flooded in 2015', ta: '2015-ல் வெள்ளம்' },
+  keyWater: { en: 'Below the chosen water height', ta: 'தேர்ந்தெடுத்த நீர்மட்டத்திற்குக் கீழ்' },
+  raiseWater: { en: 'Raise the water', ta: 'நீர்மட்டத்தை உயர்த்து' },
+  waterOff: { en: 'off', ta: 'இல்லை' },
+  spotDry: { en: 'This spot would stay above the water by', ta: 'இந்த இடம் நீர்மட்டத்திற்கு மேல் இருக்கும்:' },
+  spotUnder: { en: 'This spot would be under water by', ta: 'இந்த இடம் நீருக்குக் கீழ் இருக்கும்:' },
+  shareUnder: { en: 'of this view would be under.', ta: 'பகுதி நீருக்குக் கீழ் இருக்கும்.' },
+  waterCaveat: {
+    en: 'This shows the shape of the ground. It is not a forecast. It floods everything below one height, as if the area were a bathtub; real floods follow drains, walls and rivers. Heights come from a satellite survey about 30 m across that includes rooftops.',
+    ta: 'இது நிலத்தின் வடிவத்தைக் காட்டுகிறது; இது முன்னறிவிப்பு அல்ல. ஒரே உயரத்திற்குக் கீழ் உள்ள அனைத்தையும் நீரில் மூழ்கியதாகக் காட்டுகிறது. உண்மையான வெள்ளம் வடிகால், சுவர், ஆறுகளைப் பின்பற்றும்.',
+  },
+  stretch: { en: 'Heights are stretched', ta: 'உயரங்கள் பெரிதாக்கப்பட்டுள்ளன' },
+  higherTitle: { en: 'Where to move a vehicle', ta: 'வாகனத்தை எங்கு நகர்த்துவது' },
+  higherIntro: {
+    en: 'Roads within 1.2 km that are at least 2 m higher than this spot and clear of streets that flooded in 2015.',
+    ta: '1.2 கி.மீ.க்குள், இந்த இடத்தை விட குறைந்தது 2 மீ உயரமான, 2015-ல் வெள்ளம் வராத சாலைகள்.',
+  },
+  higherNone: { en: 'No clearly higher road was found within 1.2 km.', ta: '1.2 கி.மீ.க்குள் தெளிவாக உயரமான சாலை கிடைக்கவில்லை.' },
+  higherCaveat: {
+    en: 'These come from satellite height data, which can mistake a flyover or a rooftop for ground. Look at the place before you rely on it.',
+    ta: 'இவை செயற்கைக்கோள் உயரத் தரவிலிருந்து வந்தவை; மேம்பாலம் அல்லது கூரையை நிலம் என்று தவறாகக் கொள்ளலாம். நம்புவதற்கு முன் நேரில் பாருங்கள்.',
+  },
+  away: { en: 'away', ta: 'தொலைவில்' },
+  higher: { en: 'higher', ta: 'உயரம் அதிகம்' },
+  directions: { en: 'Directions', ta: 'வழி' },
+
   // Replay
   replay: { en: 'Replay a past storm', ta: 'கடந்த புயலை மீண்டும் பார்' },
   replayIntro: {

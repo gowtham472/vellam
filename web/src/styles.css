@@ -1801,3 +1801,191 @@ img {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Time-lapse, reservoirs and the 3D view */
+
+.timelapse {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.timelapse input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+.timelapse-when {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.reservoirs {
+  display: grid;
+  gap: 12px;
+}
+
+.reservoirs li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.reservoir-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.reservoir-bar i {
+  display: block;
+  height: 100%;
+  background: #1c7ed6;
+}
+
+.reservoir-high .reservoir-bar i {
+  background: var(--brand);
+}
+
+.reservoir-high strong {
+  color: var(--brand-strong);
+}
+
+.reservoir-figures {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.terrain-stage {
+  position: relative;
+}
+
+.terrain-map {
+  height: min(68vh, 620px);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.terrain-key {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.terrain-key li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terrain-key i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.key-home {
+  background: var(--brand);
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.key-flooded {
+  background: #1c5fd6;
+}
+
+.key-water {
+  background: rgb(28 110 214 / 0.6);
+  border-radius: 3px !important;
+}
+
+.terrain-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: #1c7ed6;
+}
+
+.terrain-readout {
+  font-weight: 700;
+}
+
+.pin {
+  display: grid;
+  place-items: center;
+  font: 800 13px var(--font);
+  color: #ffffff;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+
+.pin-home {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+.pin-spot {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #1f9d6b;
+}
+
+.pin-report {
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #1c5fd6;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.spots {
+  display: grid;
+  gap: 8px;
+}
+
+.spots li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-small);
+}
+
+.spot-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #1f9d6b;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.spots li > span:nth-child(2) {
+  display: grid;
+}
+
+.spots small {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}

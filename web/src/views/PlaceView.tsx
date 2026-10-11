@@ -1,26 +1,18 @@
-import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, CubeIcon, UsersThreeIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PlaceView as PlaceData, TrackRecordResult } from '../../../engine/src/api/service.ts';
 import { formatHour } from '../../../engine/src/core/assess.ts';
 import { distanceMetres } from '../../../engine/src/core/geo.ts';
-import type { EvidenceSource, Point, RainWindow, WaterDepth, WaterReport } from '../../../engine/src/core/types.ts';
+import type { Point, RainWindow, WaterDepth, WaterReport } from '../../../engine/src/core/types.ts';
 import { api, type Place } from '../api.ts';
 import { placeLink } from '../App.tsx';
 import { CityMap } from '../components/CityMap.tsx';
 import { loadPlaces } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
 import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
-import { LEVEL } from '../level.ts';
+import { AlertsForm } from '../components/AlertsForm.tsx';
+import { LEVEL, SOURCE_LABEL } from '../level.ts';
 import { stormName } from '../storms.ts';
-
-const SOURCE_LABEL: Record<EvidenceSource, string> = {
-  FORECAST: 'Forecast',
-  OBSERVED: 'Measured',
-  TERRAIN: 'Terrain',
-  MAP: 'Map',
-  HISTORY: '2015 record',
-  JUDGEMENT: 'Judgement',
-};
 
 const DEPTHS: readonly WaterDepth[] = ['NONE', 'ANKLE', 'KNEE', 'WAIST'];
 const NEARBY_METRES = 2500;
@@ -155,6 +147,11 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[assessment.level][language]}
           </h1>
           <p className="verdict-headline">{advice.headline}</p>
+          {assessment.raisedByReports === true && (
+            <p className="verdict-peak">
+              <UsersThreeIcon weight="fill" aria-hidden="true" /> {t('raisedByReports')}
+            </p>
+          )}
           {assessment.peak !== undefined && (
             <p className="verdict-peak">
               <ClockIcon weight="bold" aria-hidden="true" /> {t('worstAround')} {formatHour(assessment.peak.start)}
@@ -257,6 +254,9 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             </div>
           </dl>
           <CityMap focus={{ point, level: assessment.level }} reports={reports} onPick={(picked) => (location.hash = placeLink(picked.lat, picked.lon, date))} />
+          <a className="button button-solid" href={`#/3d/${point.lat.toFixed(5)},${point.lon.toFixed(5)}${date === undefined ? '' : `/${date}`}`}>
+            <CubeIcon weight="fill" aria-hidden="true" /> {t('see3d')}
+          </a>
         </section>
 
         {date === undefined && (
@@ -298,6 +298,8 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             )}
           </section>
         )}
+
+        {date === undefined && <AlertsForm street={{ point, name: near?.place.name ?? 'your street' }} />}
 
         {record !== undefined && (
           <section className="card">

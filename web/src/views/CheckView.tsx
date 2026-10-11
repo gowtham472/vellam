@@ -1,14 +1,18 @@
-import { ArrowLeftIcon, CaretRightIcon, HandTapIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, CaretRightIcon, HandTapIcon, PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
-import type { Point, Snapshot } from '../../../engine/src/core/types.ts';
+import { formatHour } from '../../../engine/src/core/assess.ts';
+import type { Level, Point, Snapshot } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { placeLink } from '../App.tsx';
 import { CityMap } from '../components/CityMap.tsx';
 import { Finder } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
+import { ReservoirCard } from '../components/ReservoirCard.tsx';
 import { LEVEL_NAME, useText } from '../i18n.ts';
 import { LEVEL, LEVELS } from '../level.ts';
 import { stormName } from '../storms.ts';
+
+const FRAME_MS = 900;
 
 function formatTime(iso: string, language: string): string {
   return new Date(iso).toLocaleString(language === 'ta' ? 'ta-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -19,6 +23,9 @@ export function CheckView({ date }: { date?: string }) {
   const { t, language } = useText();
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState<string>();
+  /** The six hour window shown on the map. Undefined shows each locality's worst level. */
+  const [frame, setFrame] = useState<number>();
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     api.city(date).then(setSnapshot, (reason: unknown) => {
@@ -26,12 +33,33 @@ export function CheckView({ date }: { date?: string }) {
     });
   }, [date]);
 
+  const frames = snapshot?.windowStarts.length ?? 0;
+
+  useEffect(() => {
+    if (!playing || frames === 0) return;
+    const timer = window.setInterval(() => {
+      setFrame((current) => {
+        const next = (current ?? -1) + 1;
+        if (next >= frames) {
+          setPlaying(false);
+          return undefined;
+        }
+        return next;
+      });
+    }, FRAME_MS);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [playing, frames]);
+
   const open = (point: Point) => {
     location.hash = placeLink(point.lat, point.lon, date);
   };
 
+  const levelOf = (place: Snapshot['places'][number]): Level => (frame === undefined ? undefined : place.timeline[frame]) ?? place.level;
   const atRisk = snapshot?.places.filter((place) => place.level === 'SEVERE' || place.level === 'HIGH') ?? [];
-  const worst = LEVELS.find((level) => snapshot?.places.some((place) => place.level === level));
+  const worst = LEVELS.find((level) => snapshot?.places.some((place) => levelOf(place) === level));
+  const frameStart = frame === undefined ? undefined : snapshot?.windowStarts[frame];
 
   return (
     <div className="stack">
@@ -66,17 +94,50 @@ export function CheckView({ date }: { date?: string }) {
               <li key={level}>
                 <LevelIcon weight="fill" aria-hidden="true" style={{ color: LEVEL[level].colour }} />
                 {LEVEL_NAME[level][language]}
-                <strong>{snapshot?.places.filter((place) => place.level === level).length ?? 0}</strong>
+                <strong>{snapshot?.places.filter((place) => levelOf(place) === level).length ?? 0}</strong>
               </li>
             );
           })}
         </ul>
-        <CityMap {...(snapshot === undefined ? {} : { places: snapshot.places })} onPick={open} />
+        <CityMap {...(snapshot === undefined ? {} : { places: snapshot.places })} {...(frame === undefined ? {} : { frame })} onPick={open} />
+
+        {frames > 0 && (
+          <div className="timelapse">
+            <button
+              type="button"
+              className="button button-outline"
+              onClick={() => {
+                if (!playing && frame === undefined) setFrame(0);
+                setPlaying(!playing);
+              }}
+            >
+              {playing ? <PauseIcon weight="fill" aria-hidden="true" /> : <PlayIcon weight="fill" aria-hidden="true" />}
+              {playing ? t('pause') : t('play')}
+            </button>
+            <input
+              type="range"
+              min={-1}
+              max={frames - 1}
+              step={1}
+              value={frame ?? -1}
+              aria-label={t('play')}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                setPlaying(false);
+                setFrame(value < 0 ? undefined : value);
+              }}
+            />
+            <span className="timelapse-when">{frameStart === undefined ? t('worstOf48') : formatHour(frameStart)}</span>
+          </div>
+        )}
+
         <p className="muted hint">
           <HandTapIcon weight="bold" aria-hidden="true" /> {t('tapMap')}
         </p>
         {error !== undefined && <p className="notice notice-error">{error}</p>}
       </section>
+
+      <ReservoirCard {...(date === undefined ? {} : { date })} />
 
       <section className="card">
         <div className="card-head">
