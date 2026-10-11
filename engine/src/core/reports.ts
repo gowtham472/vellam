@@ -1,10 +1,11 @@
-import type { Assessment, Evidence, Level, WaterDepth } from './types.ts';
+import type { Assessment, Evidence, Level, PhotoCheck, WaterDepth } from './types.ts';
 
 /** A neighbour's report, placed relative to the spot being assessed. */
 export interface NearbyReport {
   readonly depth: WaterDepth;
   readonly distanceMetres: number;
   readonly hoursAgo: number;
+  readonly photo?: PhotoCheck;
 }
 
 /**
@@ -17,8 +18,32 @@ export const REPORT_FRESH_HOURS = 6;
 const LEVELS: readonly Level[] = ['LOW', 'WATCH', 'HIGH', 'SEVERE'];
 const DEPTH_WORD: Record<WaterDepth, string> = { NONE: 'no water', ANKLE: 'ankle deep', KNEE: 'knee deep', WAIST: 'waist deep' };
 
+/**
+ * How sure the model must be before its reading of a photo changes anything. Between the
+ * two, the photo is ignored and the report counts as any other.
+ */
+export const PHOTO_SHOWS_WATER = 0.8;
+export const PHOTO_NO_WATER = 0.2;
+
+export function photoVerdict(waterProbability: number): PhotoCheck['verdict'] {
+  return waterProbability >= PHOTO_SHOWS_WATER ? 'SHOWS_WATER' : waterProbability <= PHOTO_NO_WATER ? 'NO_WATER' : 'UNCLEAR';
+}
+
+const DEEP: readonly WaterDepth[] = ['KNEE', 'WAIST'];
+
+/** A report of water whose own photo shows none is set aside. */
 function wet(report: NearbyReport): boolean {
-  return report.depth !== 'NONE' && report.distanceMetres <= REPORT_REACH_METRES && report.hoursAgo <= REPORT_FRESH_HOURS;
+  return (
+    report.depth !== 'NONE' &&
+    report.photo?.verdict !== 'NO_WATER' &&
+    report.distanceMetres <= REPORT_REACH_METRES &&
+    report.hoursAgo <= REPORT_FRESH_HOURS
+  );
+}
+
+/** Knee deep or more, said by the resident and seen in their photo by the model. */
+function shownDeep(report: NearbyReport): boolean {
+  return report.photo?.verdict === 'SHOWS_WATER' && DEEP.includes(report.depth) && DEEP.includes(report.photo.depth);
 }
 
 /**
@@ -29,17 +54,26 @@ function wet(report: NearbyReport): boolean {
  * raises the level to WATCH at most; it takes two that agree to reach HIGH or SEVERE. A
  * report of no water never lowers the level, because one dry doorstep says little about
  * the next street.
+ *
+ * A photo can stand in for the second report: where the model sees knee deep water in the
+ * photo of a report that says the same, that one report reaches HIGH. It never reaches
+ * SEVERE alone, because a photo proves water somewhere, not that it was taken here today.
  */
 export function reportFloor(reports: readonly NearbyReport[]): { level: Level; evidence: Evidence } | undefined {
   const relevant = reports.filter(wet);
   if (relevant.length === 0) return undefined;
   const waist = relevant.filter((report) => report.depth === 'WAIST').length;
   const kneeOrMore = relevant.filter((report) => report.depth === 'KNEE' || report.depth === 'WAIST').length;
-  const level: Level = waist >= 2 ? 'SEVERE' : kneeOrMore >= 2 ? 'HIGH' : 'WATCH';
+  const shown = relevant.some(shownDeep);
+  const level: Level = waist >= 2 ? 'SEVERE' : kneeOrMore >= 2 || shown ? 'HIGH' : 'WATCH';
   const deepest = waist > 0 ? 'WAIST' : kneeOrMore > 0 ? 'KNEE' : 'ANKLE';
   const nearest = Math.min(...relevant.map((report) => report.distanceMetres));
   const who = relevant.length === 1 ? '1 neighbour has' : `${String(relevant.length)} neighbours have`;
-  const caution = relevant.length === 1 && deepest !== 'ANKLE' ? '. One report alone raises the level to WATCH; a second would raise it further' : '';
+  const caution = shown
+    ? '. A photo sent with a report was judged by a model to show water knee deep or more, which counts as a second report'
+    : relevant.length === 1 && deepest !== 'ANKLE'
+      ? '. One report alone raises the level to WATCH; a second, or a photo, would raise it further'
+      : '';
   return {
     level,
     evidence: {

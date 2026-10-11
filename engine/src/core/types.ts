@@ -100,11 +100,24 @@ export interface ForecastCheck {
 
 export type WaterDepth = 'NONE' | 'ANKLE' | 'KNEE' | 'WAIST';
 
+/**
+ * What a model made of the photo sent with a report. Only this verdict is kept; the photo
+ * is read once and discarded.
+ */
+export interface PhotoCheck {
+  readonly verdict: 'SHOWS_WATER' | 'NO_WATER' | 'UNCLEAR';
+  /** The model's probability that the photo shows flood water, from 0 to 1. */
+  readonly waterProbability: number;
+  /** The depth the model thought most likely, which may differ from the one reported. */
+  readonly depth: WaterDepth;
+}
+
 export interface WaterReport {
   readonly id: string;
   readonly point: Point;
   readonly depth: WaterDepth;
   readonly at: string;
+  readonly photo?: PhotoCheck;
 }
 
 /** One locality in a city-wide snapshot. */

@@ -36,6 +36,10 @@ Globals:
       Variables:
         TABLE_NAME: !Ref Table
         ALERT_TOPIC_ARN: !Ref AlertTopic
+        # Names of the Parameter Store entries, not their values. The token is a SecureString
+        # the account owner creates by hand, so it never passes through this template.
+        CLOUDFLARE_ACCOUNT_PARAMETER: /vellam/cloudflare-account-id
+        CLOUDFLARE_TOKEN_PARAMETER: /vellam/cloudflare-token
         NODE_OPTIONS: --enable-source-maps
 
 Resources:
@@ -99,6 +103,10 @@ Resources:
               Effect: Allow
               Action: sns:Subscribe
               Resource: !Ref AlertTopic
+            - Sid: ReadPhotoCheckCredentials
+              Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/vellam/cloudflare-*
       Events:
         Places:
           Type: HttpApi

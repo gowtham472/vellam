@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowsOutIcon, CheckCircleIcon, ClockIcon, CubeIcon, MapTrifoldIcon, UsersThreeIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, ArrowsOutIcon, CameraIcon, CheckCircleIcon, ClockIcon, CubeIcon, MapTrifoldIcon, UsersThreeIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { PlaceView as PlaceData, TrackRecordResult } from '../../../engine/src/api/service.ts';
 import { formatHour } from '../../../engine/src/core/assess.ts';
@@ -16,6 +16,24 @@ import { stormName } from '../storms.ts';
 
 // The 3D map brings a large library with it, so it is fetched after the answer is on screen.
 const TerrainScene = lazy(() => import('./TerrainView.tsx').then((module) => ({ default: module.TerrainScene })));
+
+const PHOTO_EDGE = 1024;
+
+/**
+ * Shrinks a photo so its longer side is 1024 pixels and returns it as a JPEG data URL. The
+ * model reads at most about a megapixel, so sending more would only cost the resident data.
+ */
+async function shrinkPhoto(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, PHOTO_EDGE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (context === null) throw new Error('The photo could not be drawn');
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
 
 const DEPTHS: readonly WaterDepth[] = ['NONE', 'ANKLE', 'KNEE', 'WAIST'];
 const NEARBY_METRES = 2500;
@@ -54,7 +72,10 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
   const [record, setRecord] = useState<TrackRecordResult>();
   const [places, setPlaces] = useState<Place[]>([]);
   const [reports, setReports] = useState<WaterReport[]>([]);
-  const [reported, setReported] = useState(false);
+  const [reported, setReported] = useState<WaterReport>();
+  const [photo, setPhoto] = useState<string>();
+  const [photoError, setPhotoError] = useState(false);
+  const [sending, setSending] = useState(false);
   const [flat, setFlat] = useState(false);
 
   useEffect(() => {
@@ -122,10 +143,11 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
     .join(' ');
 
   const sendReport = (depth: WaterDepth) => {
-    api.report(point, depth).then(
+    setSending(true);
+    api.report(point, depth, photo).then(
       (report) => {
         setReports([report, ...reports]);
-        setReported(true);
+        setReported(report);
       },
       (reason: unknown) => {
         setError(reason instanceof Error ? reason.message : String(reason));
@@ -344,21 +366,62 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
                 <DropIcon weight="fill" aria-hidden="true" /> {t('reportTitle')}
               </h2>
             </div>
-            {reported ? (
+            {reported !== undefined ? (
               <div className="thanks">
                 <Mascot mood="wink" size={72} />
-                <p className="notice">{t('reportThanks')}</p>
+                <div className="thanks-copy">
+                  <p className="notice">{t('reportThanks')}</p>
+                  {photo !== undefined && (
+                    <p className={reported.photo?.verdict === 'SHOWS_WATER' ? 'notice' : 'notice notice-warn'}>
+                      {reported.photo === undefined
+                        ? t('photoUnchecked')
+                        : reported.photo.verdict === 'SHOWS_WATER'
+                          ? `${t('photoShows')} (${String(Math.round(reported.photo.waterProbability * 100))}%)`
+                          : reported.photo.verdict === 'NO_WATER'
+                            ? t('photoNone')
+                            : t('photoUnclear')}
+                      .
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="depths">
-                {DEPTHS.map((depth) => (
-                  <button key={depth} type="button" className="button button-outline" onClick={() => sendReport(depth)}>
-                    {depthName(depth)}
-                  </button>
-                ))}
-              </div>
+              <>
+                <label className="photo-pick">
+                  <CameraIcon weight="fill" aria-hidden="true" />
+                  <span>{photo === undefined ? t('photoAdd') : t('photoReady')}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file === undefined) return;
+                      shrinkPhoto(file).then(
+                        (shrunk) => {
+                          setPhoto(shrunk);
+                          setPhotoError(false);
+                        },
+                        () => {
+                          setPhotoError(true);
+                        },
+                      );
+                    }}
+                  />
+                </label>
+                {photo !== undefined && <img className="photo-preview" src={photo} alt="" />}
+                {photoError && <p className="notice notice-warn">{t('photoFailed')}</p>}
+                <div className="depths">
+                  {DEPTHS.map((depth) => (
+                    <button key={depth} type="button" className="button button-outline" disabled={sending} onClick={() => sendReport(depth)}>
+                      {depthName(depth)}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-            <p className="muted">{t('reportNote')}</p>
+            <p className="muted">
+              {t('reportNote')} {t('photoNote')}
+            </p>
             <h3>{t('reportsNearby')}</h3>
             {reports.length === 0 ? (
               <p className="muted">{t('noReports')}</p>
@@ -367,6 +430,11 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
                 {reports.slice(0, 8).map((report) => (
                   <li key={report.id}>
                     <strong>{depthName(report.depth)}</strong>
+                    {report.photo !== undefined && report.photo.verdict !== 'UNCLEAR' && (
+                      <span className={report.photo.verdict === 'SHOWS_WATER' ? 'tag tag-good' : 'tag'}>
+                        <CameraIcon weight="fill" aria-hidden="true" /> {t(report.photo.verdict === 'SHOWS_WATER' ? 'photoBadge' : 'photoBadgeNone')}
+                      </span>
+                    )}
                     <span className="muted">
                       {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
                     </span>

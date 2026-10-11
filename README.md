@@ -91,8 +91,18 @@ water that is already there:
   no further. Two that agree on knee deep or more raise it to HIGH, and two on waist deep to
   SEVERE. A single unverified tap never sets off a warning by itself.
 
-There is no machine learning and no language model in this path. The same street and the same
-forecast always give the same answer, and the answer lists every fact it used.
+The level is always set by these rules. The same street, forecast and reports give the same
+answer, and the answer lists every fact it used.
+
+**The one place a model is used.** A resident can attach a photo to a report. The photo goes
+to [clef-flash](https://developers.cloudflare.com/workers-ai/models/clef-flash/), a decision
+model hosted by Cloudflare, with two typed questions: does this show flood water, and how
+deep. It returns probabilities, not prose. At 80% or more the photo counts as showing water,
+and where it shows knee deep water on a report that says the same, that one report reaches
+HIGH, as two unverified reports would. At 20% or less the report is set aside. In between,
+the photo is ignored. A photo can never take a street to SEVERE alone, because it proves
+water somewhere, not that it was taken on that street today. The photo is read once and not
+stored. When the model cannot be reached the report is saved without a verdict.
 
 ## 4. What we measured, including what went wrong
 
@@ -153,6 +163,9 @@ not been tested on the days that matter.
   below one height, and the height data is a satellite survey that includes rooftops. The
   higher-ground suggestions rest on the same data and can mistake a flyover for a road.
 - Reports are not verified. That is why one report alone can raise a street only to WATCH.
+- The photo check has not been measured. Its thresholds are our judgement, we have no set of
+  labelled flood photos to test it on, and an old or borrowed photo of a real flood would
+  pass it. That is why a photo is worth one extra report and no more.
 - A locality or city on the map is assessed at one point. The place page for an exact spot is
   the answer to read.
 - Vellam is not an official warning. Follow the India Meteorological Department and your local
@@ -168,6 +181,8 @@ flowchart LR
   L --> D[(DynamoDB<br/>terrain, water, assessments,<br/>reports, snapshots, watches)]
   L --> O[Open-Meteo<br/>forecast, record, elevation]
   L --> W[Chennai Metro Water bulletin<br/>OpenStreetMap water lookup]
+  L --> P[Systems Manager<br/>Parameter Store]
+  L --> C[Cloudflare Workers AI<br/>clef-flash photo check]
   S[EventBridge Scheduler<br/>every 3 hours] --> N[Lambda<br/>city snapshot]
   N --> D
   N --> O
@@ -183,11 +198,14 @@ flowchart LR
 | EventBridge Scheduler | Rebuilds the city snapshot every three hours |
 | SNS | Email alerts. A message goes out when risk appears, not every three hours while it lasts. A filter on each subscription sends a street's alert only to the people watching that street |
 | Amplify Hosting | Serves the dashboard over HTTPS |
+| Systems Manager Parameter Store | Holds the Cloudflare account ID and token for the photo check. The token is a SecureString created by hand, so it is in no template and no code |
 | CloudFormation, through SAM | The whole stack is one template, `infrastructure/template.yaml` |
 | CloudWatch Logs | Function logs. Upstream errors are logged in full and shown to the visitor as a plain message |
 | IAM | The API function can read and write its table and subscribe to the topic. Only the snapshot function can publish |
 
 Everything is pay per request, and at this project's traffic sits inside the free tier.
+The photo check is the only call that leaves AWS: the model's weights are open (Apache-2.0)
+but need about 64 GB of GPU memory, and a new AWS account has no GPU quota.
 
 There is no queue or stream in this design, on purpose. The work is one request at a time and
 one scheduled job every three hours, and the real ceiling is the free weather source's
@@ -197,7 +215,7 @@ per-minute quota, not our own throughput.
 
 ```
 engine/src/core      the rules: rain classes, place factors, reservoirs, reports, the level table, forecast checks
-engine/src/sources   Open-Meteo, the Metro Water reservoir bulletin, and the OpenStreetMap water lookup
+engine/src/sources   Open-Meteo, the Metro Water reservoir bulletin, the OpenStreetMap water lookup, the photo check
 engine/src/api       the service, router, DynamoDB storage and the two Lambda handlers
 engine/src/data      Chennai water bodies, localities and 2015 flooded streets; India's major cities
 engine/scripts       local API server, Lambda build, and the backtest
@@ -205,7 +223,7 @@ scripts              the scripts that produced the data files
 web                  the dashboard: React, Vite, Leaflet for the flat map, MapLibre for the 3D street
 web/src/locales      the interface text, one file per language
 infrastructure       SAM template and the dashboard deploy script
-tests                84 tests, run without a network or an AWS account
+tests                94 tests, run without a network or an AWS account
 docs                 backtest results
 ```
 
@@ -218,7 +236,7 @@ Needs Node.js 22.18 or later.
 
 ```bash
 npm install
-npm test            # 84 tests
+npm test            # 94 tests
 npm run dev:api     # API on http://localhost:8787, in-memory storage, real weather
 npm run dev:web     # dashboard on http://localhost:5183
 ```
@@ -242,6 +260,14 @@ npm run deploy:web        # build the dashboard against the API and publish it
 New AWS accounts are limited to very few Amplify apps. To publish as a branch of an app you
 already have, set `ExistingAmplifyAppId` and `DashboardBranchName` in
 `infrastructure/samconfig.toml`.
+
+The photo check is optional. To turn it on, store a Cloudflare account ID and a Workers AI
+API token; without them reports are saved with no verdict.
+
+```bash
+aws ssm put-parameter --name /vellam/cloudflare-account-id --type String --value <account id>
+aws ssm put-parameter --name /vellam/cloudflare-token --type SecureString --value <token>
+```
 
 To store the replay of a past storm for the city map:
 
@@ -281,4 +307,5 @@ Built by team **DoodleByte** during the event:
 
 We used Claude Code (Anthropic) as an AI pair programmer for the code, tests, infrastructure
 template, documentation and the machine translation of the interface. Two things come from our own earlier projects: the deploy script
-for the dashboard, and the cloud mascot's character, which is redrawn here as an SVG in red. Vellam's own answers come from fixed rules, never from a model.
+for the dashboard, and the cloud mascot's character, which is redrawn here as an SVG in red. Vellam's levels come from fixed rules. The one model in the product, clef-flash, only judges a
+report's photo, as section 3 describes.

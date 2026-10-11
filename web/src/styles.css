@@ -1384,8 +1384,10 @@ img {
 
 .reports li {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px 10px;
   padding: 8px 12px;
   background: var(--surface-2);
   border-radius: var(--radius-small);
@@ -2164,4 +2166,66 @@ img {
 
 .card-head {
   flex-wrap: wrap;
+}
+
+/* Photo with a report */
+.photo-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-small);
+  color: var(--ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.photo-pick:hover,
+.photo-pick:focus-within {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.photo-pick svg {
+  font-size: 20px;
+  color: var(--brand);
+}
+
+/* The control is the label; the browser's own file button adds nothing a resident needs. */
+.photo-pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.photo-preview {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-small);
+}
+
+.thanks-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag-good {
+  background: rgb(31 157 107 / 0.16);
+  color: #1f9d6b;
 }

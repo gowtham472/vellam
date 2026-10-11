@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { PublishCommand, SNSClient, SubscribeCommand } from '@aws-sdk/client-sns';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { fetchPhotoJudgement, type ClefConfig } from '../sources/clef.ts';
 import { fetchForecast, fetchForecastHistory, fetchReplay, fetchTerrain } from '../sources/open-meteo.ts';
 import { fetchNearbyWater } from '../sources/overpass.ts';
 import { fetchReservoirs } from '../sources/reservoirs.ts';
@@ -14,17 +16,45 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+/**
+ * Reads the Cloudflare account and token from Parameter Store on first use and keeps them
+ * for the life of the function instance. A failed read is not kept, so a parameter added
+ * later is picked up without a redeploy.
+ */
+function clefConfigLoader(): () => Promise<ClefConfig> {
+  const ssm = new SSMClient({});
+  let loaded: Promise<ClefConfig> | undefined;
+  const read = async (name: string): Promise<string> => {
+    const result = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
+    const value = result.Parameter?.Value;
+    if (value === undefined || value === '') throw new Error(`Parameter ${name} is empty`);
+    return value;
+  };
+  return () => {
+    loaded ??= Promise.all([read(requiredEnv('CLOUDFLARE_ACCOUNT_PARAMETER')), read(requiredEnv('CLOUDFLARE_TOKEN_PARAMETER'))]).then(
+      ([accountId, token]) => ({ accountId, token }),
+      (error: unknown) => {
+        loaded = undefined;
+        throw error;
+      },
+    );
+    return loaded;
+  };
+}
+
 /** The dependencies both Lambda functions run with: DynamoDB, SNS and the live sources. */
 export function awsDependencies(options: { pauseMs?: number } = {}): ServiceDependencies {
   const sns = new SNSClient({});
   const topicArn = requiredEnv('ALERT_TOPIC_ARN');
   const pauseMs = options.pauseMs;
+  const clefConfig = clefConfigLoader();
   return {
     repository: new DynamoRepository(DynamoDBDocumentClient.from(new DynamoDBClient({})), requiredEnv('TABLE_NAME')),
     fetchForecast,
     fetchReplay,
     fetchTerrain,
-  fetchNearbyWater,
+    fetchNearbyWater,
+    judgePhoto: async (photo) => fetchPhotoJudgement(await clefConfig(), photo),
     fetchForecastHistory,
     fetchReservoirs,
     publishAlert: async (topic, subject, message) => {

@@ -137,5 +137,15 @@
   "helpline1078": "National disaster helpline",
   "helpline1913": "Greater Chennai Corporation",
   "view3d": "3D",
-  "view2d": "Map"
+  "view2d": "Map",
+  "photoAdd": "Add a photo (optional)",
+  "photoReady": "Photo ready. Now choose the depth.",
+  "photoNote": "A photo is read once by a model, clef-flash on Cloudflare, to check that it shows water. The photo is not stored.",
+  "photoShows": "The photo check sees water in your photo, so your report counts for more",
+  "photoNone": "The photo check does not see flood water in this photo, so this report will not raise the level",
+  "photoUnclear": "The photo check could not tell what the photo shows. Your report counts as an ordinary report",
+  "photoUnchecked": "The photo could not be checked just now. Your report was saved without it",
+  "photoFailed": "That file could not be read as a photo.",
+  "photoBadge": "photo shows water",
+  "photoBadgeNone": "photo shows no water"
 }

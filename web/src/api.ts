@@ -32,11 +32,12 @@ export const api = {
   city: (date?: string) => request<Snapshot>(`/city${date === undefined ? '' : `?date=${date}`}`),
   assess: (point: Point, date?: string) => request<PlaceView>(`/assess?${at(point)}${date === undefined ? '' : `&date=${date}`}`),
   trackRecord: (point: Point) => request<TrackRecordResult>(`/track-record?${at(point)}`),
-  report: (point: Point, depth: WaterDepth) =>
+  /** `photo` is a data URL. The API passes it to the photo check and does not keep it. */
+  report: (point: Point, depth: WaterDepth, photo?: string) =>
     request<WaterReport>('/reports', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...point, depth }),
+      body: JSON.stringify({ ...point, depth, ...(photo === undefined ? {} : { photo }) }),
     }),
   reservoirs: (date?: string) => request<ReservoirReport>(`/reservoirs${date === undefined ? '' : `?date=${date}`}`),
   /** Subscribes to city alerts, and to one street when `street` is given. */

@@ -1,9 +1,10 @@
 import { assess } from '../core/assess.ts';
 import { distanceMetres } from '../core/geo.ts';
-import { applyReports, type NearbyReport } from '../core/reports.ts';
+import { applyReports, type NearbyReport, photoVerdict } from '../core/reports.ts';
 import { DOWNSTREAM, RIVER_REACH_METRES, type ReservoirReport, type RiverExposure } from '../core/reservoirs.ts';
 import { GUIDANCE_SOURCE, guidanceFor, HELPLINE_SOURCE, HELPLINES, type Guidance, type Helpline } from '../core/guidance.ts';
-import type { Assessment, ForecastCheck, HourlyRain, Level, NearestWater, PlaceSummary, Point, Snapshot, Terrain, Watch, WaterDepth, WaterReport } from '../core/types.ts';
+import type { Photo, PhotoJudgement } from '../sources/clef.ts';
+import type { Assessment, ForecastCheck, HourlyRain, Level, NearestWater, PhotoCheck, PlaceSummary, Point, Snapshot, Terrain, Watch, WaterDepth, WaterReport } from '../core/types.ts';
 import { dailyChecks, summarize, type CheckedHour, type TrackRecord } from '../core/verify.ts';
 import { isInsideMap, nearestFloodedStreet, nearestNamedWater, nearestWater, type FloodHistory, type WaterMap } from '../core/water.ts';
 import floodData from '../data/chennai-flooded-2015.json' with { type: 'json' };
@@ -45,6 +46,8 @@ export interface ServiceDependencies {
   fetchForecastHistory(point: Point, days: number): Promise<CheckedHour[]>;
   /** Today's reservoir bulletin, or the one for a past date. */
   fetchReservoirs(date?: string): Promise<ReservoirReport>;
+  /** Asks a model what a report's photo shows. Absent where no model is configured. */
+  judgePhoto?(photo: Photo): Promise<PhotoJudgement>;
   /**
    * Sends a message to the subscribers of one topic: `CITY` for everyone, or a street's
    * key for the people watching that street. Absent where alerts are not configured.
@@ -213,6 +216,7 @@ export async function viewPlace(deps: ServiceDependencies, point: Point, date?: 
     depth: report.depth,
     distanceMetres: distanceMetres(point, report.point),
     hoursAgo: (now - Date.parse(report.at)) / 3_600_000,
+    ...(report.photo === undefined ? {} : { photo: report.photo }),
   }));
   const assessment = applyReports(base, nearby);
   return {
@@ -247,6 +251,40 @@ export async function reportsAround(deps: ServiceDependencies, point: Point): Pr
  * Stores what a resident sees outside. A report carries a place, a depth and a time, and
  * nothing that identifies the person, so there is no free text to moderate or to leak.
  */
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+/** About 1.5 MB of image once decoded. The page shrinks a photo well below this before sending. */
+const MAX_PHOTO_BASE64 = 2_000_000;
+
+/** Reads an optional photo sent as a data URL, the form a browser produces. */
+function readPhoto(value: unknown): Photo | undefined {
+  if (value === undefined || value === null) return undefined;
+  const match = typeof value === 'string' ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(value) : null;
+  const contentType = PHOTO_TYPES.find((type) => type === match?.[1]);
+  const base64 = match?.[2];
+  if (contentType === undefined || base64 === undefined) throw new HttpError(400, 'photo must be a JPEG, PNG or WebP image sent as a data URL');
+  if (base64.length > MAX_PHOTO_BASE64) throw new HttpError(413, 'The photo is too large. Send one under 1.5 MB');
+  return { contentType, base64 };
+}
+
+/**
+ * A report is worth keeping even when its photo cannot be checked, so a failure here leaves
+ * the report without a verdict and does not fail the request.
+ */
+async function checkPhoto(deps: ServiceDependencies, photo: Photo): Promise<PhotoCheck | undefined> {
+  if (deps.judgePhoto === undefined) return undefined;
+  try {
+    const judgement = await deps.judgePhoto(photo);
+    return { verdict: photoVerdict(judgement.waterProbability), waterProbability: judgement.waterProbability, depth: judgement.depth };
+  } catch (error) {
+    console.error('A report photo could not be checked', { error });
+    return undefined;
+  }
+}
+
+/**
+ * The photo, when one is sent, is passed to the model and then dropped. Only the verdict is
+ * stored with the report.
+ */
 export async function createReport(deps: ServiceDependencies, body: unknown): Promise<WaterReport> {
   if (typeof body !== 'object' || body === null) throw new HttpError(400, 'Send a JSON object with lat, lon and depth');
   const fields = body as Record<string, unknown>;
@@ -255,8 +293,10 @@ export async function createReport(deps: ServiceDependencies, body: unknown): Pr
   if (typeof depth !== 'string' || !DEPTHS.includes(depth as WaterDepth)) {
     throw new HttpError(400, `depth must be one of ${DEPTHS.join(', ')}`);
   }
+  const photo = readPhoto(fields['photo']);
   const now = deps.now();
-  const report: WaterReport = { id: deps.newId(), point, depth: depth as WaterDepth, at: now.toISOString() };
+  const check = photo === undefined ? undefined : await checkPhoto(deps, photo);
+  const report: WaterReport = { id: deps.newId(), point, depth: depth as WaterDepth, at: now.toISOString(), ...(check === undefined ? {} : { photo: check }) };
   await deps.repository.saveReport(report, now);
   return report;
 }
