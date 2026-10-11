@@ -368,6 +368,7 @@ engine/scripts       local API server, Lambda build, and the backtest
 scripts              the scripts that produced the data files
 web                  the dashboard: React, Vite, Leaflet for the flat map, MapLibre for the 3D street
 web/src/locales      the interface text, one file per language
+web/src/vendor       animated components copied from React Bits, with their licence
 infrastructure       SAM template and the dashboard deploy script
 tests                94 tests, run without a network or an AWS account
 docs                 backtest results
@@ -438,6 +439,7 @@ aws lambda invoke --function-name <SnapshotFunctionName> --payload '{"date":"202
 | Illustrations | [unDraw](https://undraw.co), recoloured | unDraw licence |
 | Typefaces | Plus Jakarta Sans and JetBrains Mono | SIL Open Font Licence |
 | Icons | [Phosphor](https://phosphoricons.com) | MIT |
+| Hero waves, magnetic button, click sparks, counting numbers | [React Bits](https://reactbits.dev), copied into `web/src/vendor/react-bits` | MIT + Commons Clause |
 
 The code is under the [MIT licence](LICENSE).
 

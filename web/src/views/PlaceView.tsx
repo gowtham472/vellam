@@ -10,6 +10,7 @@ import { CityMap } from '../components/CityMap.tsx';
 import { loadPlaces, pickedName } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
 import { useText } from '../i18n.ts';
+import CountUp from '../vendor/react-bits/CountUp.tsx';
 import { AlertsForm } from '../components/AlertsForm.tsx';
 import { LEVEL, SOURCE_LABEL } from '../level.ts';
 import { stormName } from '../storms.ts';
@@ -314,11 +315,15 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
                 {t('days')} {t('matched')}
               </li>
               <li>
-                <strong>{record.record.underForecast}</strong>
+                <strong>
+                  <CountUp to={record.record.underForecast} duration={0.8} />
+                </strong>
                 {t('under')}
               </li>
               <li>
-                <strong>{record.record.overForecast}</strong>
+                <strong>
+                  <CountUp to={record.record.overForecast} duration={0.8} />
+                </strong>
                 {t('over')}
               </li>
             </ul>

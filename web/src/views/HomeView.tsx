@@ -1,3 +1,6 @@
+import ClickSpark from '../vendor/react-bits/ClickSpark.tsx';
+import Magnet from '../vendor/react-bits/Magnet.tsx';
+import Waves from '../vendor/react-bits/Waves.tsx';
 import { ArrowRightIcon, ClockCounterClockwiseIcon, DropHalfBottomIcon, MapPinIcon, SealCheckIcon, UsersThreeIcon } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import type { PlaceView as PlaceData } from '../../../engine/src/api/service.ts';
@@ -163,10 +166,19 @@ function RealAnswer() {
   );
 }
 
-export function HomeView() {
+/** The wave lines are drawn on a canvas, which cannot read the theme's CSS variables. */
+const WAVE_LINE = { light: 'rgba(219, 43, 55, 0.2)', dark: 'rgba(255, 255, 255, 0.16)' } as const;
+
+export function HomeView({ theme }: { theme: 'light' | 'dark' }) {
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   return (
     <div className="home">
       <section className="hero">
+        {!still && (
+          <div className="hero-waves" aria-hidden="true">
+            <Waves key={theme} lineColor={WAVE_LINE[theme]} waveAmpX={28} waveAmpY={14} xGap={12} yGap={30} />
+          </div>
+        )}
         <div className="hero-copy">
           <h1>Will my street flood?</h1>
           <p className="lead">
@@ -174,9 +186,13 @@ export function HomeView() {
             expect in the next 48 hours, the reasons, and what to do about it. Chennai, where it began, has the deepest record.
           </p>
           <Finder />
-          <a className="button button-solid button-large" href="#/check">
-            Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
-          </a>
+          <Magnet padding={50} magnetStrength={6} disabled={still} wrapperClassName="magnet">
+            <ClickSpark sparkColor="#db2b37" sparkSize={9} sparkRadius={22} sparkCount={10}>
+              <a className="button button-solid button-large" href="#/check">
+                Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
+              </a>
+            </ClickSpark>
+          </Magnet>
         </div>
         <RainDial />
       </section>
@@ -184,87 +200,87 @@ export function HomeView() {
       <RealAnswer />
 
       <section className="trio">
-        <div className="trio-copy">
-          <h2>Four things a forecast cannot tell you</h2>
-          <dl>
-            <div>
-              <dt>
-                <ClockCounterClockwiseIcon weight="bold" aria-hidden="true" /> Whether your street has flooded before
-              </dt>
-              <dd>
-                In December 2015 residents mapped 7,851 flooded streets as the water rose. Vellam measures how far yours is
-                from the nearest one.
-              </dd>
-            </div>
-            <div>
-              <dt>
-                <DropHalfBottomIcon weight="bold" aria-hidden="true" /> What the reservoir upstream is doing
-              </dt>
-              <dd>
-                On 2 December 2015 Chembarambakkam released 29,000 cusecs into the Adyar. Vellam reads Chennai Metro Water's
-                daily bulletin and warns streets beside the river when a reservoir is nearly full or releasing heavily.
-              </dd>
-            </div>
-            <div>
-              <dt>
-                <UsersThreeIcon weight="bold" aria-hidden="true" /> What your neighbours can see right now
-              </dt>
-              <dd>
-                Anyone can report water as ankle, knee or waist deep. Two reports that agree raise the level whatever the
-                forecast says, and a report stores nothing about the person.
-              </dd>
-            </div>
-            <div>
-              <dt>
-                <SealCheckIcon weight="bold" aria-hidden="true" /> How often the forecast has been right here
-              </dt>
-              <dd>For any spot, the last 30 days of day-ahead rain forecasts beside the rain that fell.</dd>
-            </div>
-          </dl>
-        </div>
-        <img src="/illustrations/neighbourhood.svg" alt="" loading="lazy" />
+      <div className="trio-copy">
+        <h2>Four things a forecast cannot tell you</h2>
+        <dl>
+          <div>
+            <dt>
+              <ClockCounterClockwiseIcon weight="bold" aria-hidden="true" /> Whether your street has flooded before
+            </dt>
+            <dd>
+              In December 2015 residents mapped 7,851 flooded streets as the water rose. Vellam measures how far yours is
+              from the nearest one.
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <DropHalfBottomIcon weight="bold" aria-hidden="true" /> What the reservoir upstream is doing
+            </dt>
+            <dd>
+              On 2 December 2015 Chembarambakkam released 29,000 cusecs into the Adyar. Vellam reads Chennai Metro Water's
+              daily bulletin and warns streets beside the river when a reservoir is nearly full or releasing heavily.
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <UsersThreeIcon weight="bold" aria-hidden="true" /> What your neighbours can see right now
+            </dt>
+            <dd>
+              Anyone can report water as ankle, knee or waist deep. Two reports that agree raise the level whatever the
+              forecast says, and a report stores nothing about the person.
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <SealCheckIcon weight="bold" aria-hidden="true" /> How often the forecast has been right here
+            </dt>
+            <dd>For any spot, the last 30 days of day-ahead rain forecasts beside the rain that fell.</dd>
+          </div>
+        </dl>
+      </div>
+      <img src="/illustrations/neighbourhood.svg" alt="" loading="lazy" />
       </section>
 
       <section className="storms">
-        <h2>Replay a storm through the same rules</h2>
-        <ul>
-          {STORMS.map((storm) => (
-            <li key={storm.date}>
-              <a href={`#/replay/${storm.date}`}>
-                <time dateTime={storm.date}>{storm.note}</time>
-                <strong>{storm.name}</strong>
-                <span>{storm.summary}</span>
-                <ArrowRightIcon weight="bold" aria-hidden="true" />
-              </a>
-            </li>
-          ))}
-        </ul>
+      <h2>Replay a storm through the same rules</h2>
+      <ul>
+        {STORMS.map((storm) => (
+          <li key={storm.date}>
+            <a href={`#/replay/${storm.date}`}>
+              <time dateTime={storm.date}>{storm.note}</time>
+              <strong>{storm.name}</strong>
+              <span>{storm.summary}</span>
+              <ArrowRightIcon weight="bold" aria-hidden="true" />
+            </a>
+          </li>
+        ))}
+      </ul>
       </section>
 
       <section className="limits">
-        <Mascot mood="watch" size={150} />
-        <div>
-          <h2>Where not to trust it</h2>
-          <ul>
-            <li>The level is a rule of thumb. Vellam does not model how water moves through drains.</li>
-            <li>Its replay of Cyclone Michaung missed Perungudi, which was under water for days.</li>
-            <li>Three of its thresholds were wrong on the first attempt. The method page records each one.</li>
-          </ul>
-          <a className="text-link" href="#/how">
-            Read the method <ArrowRightIcon weight="bold" aria-hidden="true" />
-          </a>
-        </div>
+      <Mascot mood="watch" size={150} />
+      <div>
+        <h2>Where not to trust it</h2>
+        <ul>
+          <li>The level is a rule of thumb. Vellam does not model how water moves through drains.</li>
+          <li>Its replay of Cyclone Michaung missed Perungudi, which was under water for days.</li>
+          <li>Three of its thresholds were wrong on the first attempt. The method page records each one.</li>
+        </ul>
+        <a className="text-link" href="#/how">
+          Read the method <ArrowRightIcon weight="bold" aria-hidden="true" />
+        </a>
+      </div>
       </section>
 
       <section className="final">
-        <div>
-          <h2>The northeast monsoon starts in October.</h2>
-          <p>Know your street before the first heavy night.</p>
-          <a className="button button-invert button-large" href="#/check">
-            Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
-          </a>
-        </div>
-        <img src="/illustrations/walking-in-rain.svg" alt="" loading="lazy" />
+      <div>
+        <h2>The northeast monsoon starts in October.</h2>
+        <p>Know your street before the first heavy night.</p>
+        <a className="button button-invert button-large" href="#/check">
+          Check my street <ArrowRightIcon weight="bold" aria-hidden="true" />
+        </a>
+      </div>
+      <img src="/illustrations/walking-in-rain.svg" alt="" loading="lazy" />
       </section>
     </div>
   );

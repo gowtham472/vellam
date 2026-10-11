@@ -9,6 +9,7 @@ import { Finder } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
 import { ReservoirCard } from '../components/ReservoirCard.tsx';
 import { useText } from '../i18n.ts';
+import CountUp from '../vendor/react-bits/CountUp.tsx';
 import { LEVEL, LEVELS } from '../level.ts';
 import { stormName } from '../storms.ts';
 
@@ -100,7 +101,9 @@ export function CheckView({ date }: { date?: string }) {
               <li key={level}>
                 <LevelIcon weight="fill" aria-hidden="true" style={{ color: LEVEL[level].colour }} />
                 {levelName(level)}
-                <strong>{snapshot?.places.filter((place) => levelOf(place) === level).length ?? 0}</strong>
+                <strong>
+                  <CountUp key={`${level}-${String(frame)}`} to={snapshot?.places.filter((place) => levelOf(place) === level).length ?? 0} duration={0.8} />
+                </strong>
               </li>
             );
           })}

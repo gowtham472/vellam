@@ -2124,38 +2124,63 @@ img {
   }
 }
 
-/* Language menu: the select is drawn as a chip, with the browser's own list behind it. */
+/* Language menu */
 .language {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 6px 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 16px;
+  position: relative;
 }
 
-.language select {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 14px;
+.language-caret {
+  font-size: 12px;
+  transition: transform 0.18s ease;
+}
+
+.language [aria-expanded='true'] .language-caret {
+  transform: rotate(180deg);
+}
+
+.language-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 1100;
+  width: 200px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  outline: none;
+  transform-origin: top right;
+  animation: menu-in 0.16s ease-out;
+}
+
+.language-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-small);
+  font-size: 15px;
   font-weight: 600;
-  max-width: 120px;
   cursor: pointer;
 }
 
-.language select option {
-  background: var(--surface);
-  color: var(--ink);
+.language-list li.active {
+  background: var(--surface-2);
 }
 
-.language:focus-within,
-.language:hover {
-  border-color: var(--brand);
+.language-list li[aria-selected='true'] {
+  color: var(--brand-strong);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
 }
 
 /* In the narrow column a helpline is one row: the number, then who answers. */
@@ -2228,4 +2253,176 @@ img {
 .tag-good {
   background: rgb(31 157 107 / 0.16);
   color: #1f9d6b;
+}
+
+/* Motion. Every rule here is switched off by the reduced-motion block above it in the cascade. */
+.hero {
+  position: relative;
+}
+
+.hero > :not(.hero-waves) {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * The waves run the full width of the window behind the hero and fade out at its edges.
+ * 100vw includes the scrollbar, so the page clips the few pixels that would overhang.
+ */
+body {
+  overflow-x: clip;
+}
+
+.hero-waves {
+  position: absolute;
+  inset: -40px calc(50% - 50vw) -56px;
+  z-index: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 45%, #000 35%, transparent 100%);
+}
+
+/* The library draws a stray dot in the corner; the waves need no cursor marker here. */
+.hero-waves .waves::before {
+  display: none;
+}
+
+.magnet {
+  width: fit-content;
+}
+
+.button:active,
+.chip-button:active,
+.icon-button:active,
+.switch button:active {
+  transform: scale(0.96);
+}
+
+.switch button {
+  transition: background 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+
+.card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.storm-grid a,
+.risk-list a,
+.matches a,
+.helpline {
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.storm-grid a:hover,
+.helpline:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.risk-list a:hover,
+.matches a:hover {
+  transform: translateX(3px);
+}
+
+.risk-list a svg:last-child,
+.storm-open svg,
+.button svg {
+  transition: transform 0.16s ease;
+}
+
+.risk-list a:hover svg:last-child,
+.storm-grid a:hover .storm-open svg,
+.button:hover svg:last-child {
+  transform: translateX(3px);
+}
+
+/* A page arrives rather than appears: each block rises a little, one after the other. */
+.page > .stack > *,
+.page > .empty {
+  animation: rise 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.page > .stack > :nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.page > .stack > :nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.page > .stack > :nth-child(n + 4) {
+  animation-delay: 0.15s;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.verdict h1 svg {
+  animation: pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.2s both;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+}
+
+.timeline .bar {
+  transform-origin: bottom;
+  animation: grow 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.timeline li:nth-child(n + 3) .bar {
+  animation-delay: 0.08s;
+}
+
+.timeline li:nth-child(n + 6) .bar {
+  animation-delay: 0.16s;
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.reservoir-bar i {
+  transform-origin: left;
+  animation: fill 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page > .stack > *,
+  .page > .empty,
+  .verdict h1 svg,
+  .timeline .bar,
+  .reservoir-bar i,
+  .language-list {
+    animation: none;
+  }
+}
+
+/*
+ * Landing sections fade up as they scroll into view. This is tied to the scroll position by
+ * the browser itself, and only where that is supported: elsewhere the sections are simply
+ * visible, so no script can leave one hidden.
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home > section:not(.hero) {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 45%;
+    }
+  }
 }

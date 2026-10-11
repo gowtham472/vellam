@@ -6,11 +6,11 @@ import {
   MapPinAreaIcon,
   MoonIcon,
   SunIcon,
-  TranslateIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Mascot } from './components/Mascot.tsx';
+import { LanguageMenu } from './components/LanguageMenu.tsx';
 import { LanguageContext, LANGUAGES, loadLanguage, useText, type Language, type TextKey, type Translation } from './i18n.ts';
 import ENGLISH from './locales/en.json';
 import { CheckView } from './views/CheckView.tsx';
@@ -140,22 +140,7 @@ function TopBar({ section, theme, onTheme, language, onLanguage }: ChromeProps) 
             <ThemeIcon weight="bold" aria-hidden="true" />
           </button>
           {section !== 'home' && (
-            <label className="language">
-              <TranslateIcon weight="bold" aria-hidden="true" />
-              <select
-                value={language}
-                aria-label={t('language')}
-                onChange={(event) => {
-                  onLanguage(event.target.value as Language);
-                }}
-              >
-                {LANGUAGES.map((item) => (
-                  <option key={item.code} value={item.code} lang={item.code}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <LanguageMenu language={language} onLanguage={onLanguage} />
           )}
         </div>
       </div>
@@ -242,7 +227,7 @@ export function App() {
     <LanguageContext.Provider value={route.view === 'home' ? ENGLISH_ONLY : translation}>
       <TopBar {...chrome} />
       <main className={route.view === 'home' || route.view === 'place' ? 'page page-wide' : 'page'}>
-        {route.view === 'home' && <HomeView />}
+        {route.view === 'home' && <HomeView theme={theme} />}
         {route.view === 'check' && <CheckView key={route.date ?? 'live'} {...(route.date === undefined ? {} : { date: route.date })} />}
         {route.view === 'replay' && <ReplayView />}
         {route.view === 'prepare' && <PrepareView />}
