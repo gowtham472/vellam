@@ -5,7 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { useEffect, useRef, useState } from 'react';
 import type { PlaceView as PlaceData } from '../../../engine/src/api/service.ts';
 import { distanceMetres } from '../../../engine/src/core/geo.ts';
-import type { Point } from '../../../engine/src/core/types.ts';
+import type { Point, WaterReport } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { placeLink } from '../App.tsx';
 import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
@@ -216,6 +216,7 @@ function findHigherGround(ground: Ground, home: Point, roads: Uint8Array, floode
   return picked;
 }
 
+const NO_REPORTS: readonly WaterReport[] = [];
 const EMPTY: Ground = { heights: new Float32Array(1), west: 0, east: 0, north: 0, south: 0, originX: 0, originY: 0 };
 
 function marker(className: string, label: string): HTMLElement {
@@ -225,12 +226,12 @@ function marker(className: string, label: string): HTMLElement {
   return element;
 }
 
-export function TerrainView({ point, date }: { point: Point; date?: string }) {
-  const { t, language } = useText();
+/** The map, the water slider and the higher ground finder, for any page that has a street. */
+export function TerrainScene({ point, reports }: { point: Point; reports: readonly WaterReport[] }) {
+  const { t } = useText();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<GlMap | null>(null);
   const [ground, setGround] = useState<Ground>();
-  const [data, setData] = useState<PlaceData>();
   const [level, setLevel] = useState<number>();
   const [spots, setSpots] = useState<Spot[]>();
   const [error, setError] = useState<string>();
@@ -238,11 +239,10 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    api.assess(point, date).then(setData, () => undefined);
     loadGround(point).then(setGround, (reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason));
     });
-    // The view is keyed by place and date, so this runs once per place.
+    // The scene is keyed by place, so this runs once per place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -334,7 +334,7 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
       ...(spots ?? []).map((spot, index) =>
         new Marker({ element: marker('pin pin-spot', String(index + 1)) }).setLngLat([spot.point.lon, spot.point.lat]).addTo(target),
       ),
-      ...(data?.reports ?? [])
+      ...reports
         .filter((report) => report.depth !== 'NONE')
         .map((report) =>
           new Marker({ element: marker('pin pin-report', DEPTH_NAME[report.depth].en) })
@@ -345,29 +345,13 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
     return () => {
       for (const item of added) item.remove();
     };
-  }, [spots, data]);
+  }, [spots, reports, ready]);
 
   const here = ground === undefined ? undefined : heightAt(ground, point);
   const lowest = ground === undefined ? 0 : Math.floor(Math.max(0, ground.heights.reduce((min, h) => Math.min(min, h), Infinity)));
-  const look = data === undefined ? undefined : LEVEL[data.assessment.level];
 
   return (
-    <div className="stack terrain">
-      <a className="back" href={placeLink(point.lat, point.lon, date)}>
-        <ArrowLeftIcon weight="bold" aria-hidden="true" /> {t('backToAnswer')}
-      </a>
-      <header className="page-head">
-        <div>
-          <h1>{t('terrainTitle')}</h1>
-          <p className="lead">{t('terrainIntro')}</p>
-        </div>
-        {data !== undefined && look !== undefined && (
-          <span className="pill" style={{ background: look.colour }}>
-            {LEVEL_NAME[data.assessment.level][language]}
-          </span>
-        )}
-      </header>
-
+    <div className="scene">
       {error !== undefined && <p className="notice notice-error">{error}</p>}
 
       <div className="terrain-stage">
@@ -385,7 +369,7 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
         </ul>
       </div>
 
-      <section className="card">
+      <section className="scene-panel">
         <div className="card-head">
           <h2>
             <WavesIcon weight="fill" aria-hidden="true" /> {t('raiseWater')}
@@ -429,7 +413,7 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
         </dl>
       </section>
 
-      <section className="card">
+      <section className="scene-panel">
         <div className="card-head">
           <h2>
             <CarProfileIcon weight="fill" aria-hidden="true" /> {t('higherTitle')}
@@ -466,6 +450,39 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
           </ol>
         )}
         <p className="notice notice-warn">{t('higherCaveat')}</p>
+      </section>
+    </div>
+  );
+}
+
+export function TerrainView({ point, date }: { point: Point; date?: string }) {
+  const { t, language } = useText();
+  const [data, setData] = useState<PlaceData>();
+
+  useEffect(() => {
+    api.assess(point, date).then(setData, () => undefined);
+    // The view is keyed by place and date, so this runs once per place.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="stack">
+      <a className="back" href={placeLink(point.lat, point.lon, date)}>
+        <ArrowLeftIcon weight="bold" aria-hidden="true" /> {t('backToAnswer')}
+      </a>
+      <header className="page-head">
+        <div>
+          <h1>{t('terrainTitle')}</h1>
+          <p className="lead">{t('terrainIntro')}</p>
+        </div>
+        {data !== undefined && (
+          <span className="pill" style={{ background: LEVEL[data.assessment.level].colour }}>
+            {LEVEL_NAME[data.assessment.level][language]}
+          </span>
+        )}
+      </header>
+      <section className="card">
+        <TerrainScene point={point} reports={data?.reports ?? NO_REPORTS} />
       </section>
     </div>
   );

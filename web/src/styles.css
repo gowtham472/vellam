@@ -1034,8 +1034,8 @@ img {
   z-index: 0;
 }
 
-.columns .map {
-  height: 260px;
+.place-grid .map {
+  height: min(68vh, 620px);
 }
 
 /* The basemap is muted so the risk colours are the only strong colour on the map. */
@@ -1876,7 +1876,7 @@ img {
 .terrain-key {
   position: absolute;
   left: 10px;
-  bottom: 10px;
+  top: 10px;
   display: grid;
   gap: 4px;
   padding: 8px 10px;
@@ -1988,4 +1988,120 @@ img {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--ink-faint);
+}
+
+/*
+ * The place page. On a phone the order is what to do, then the street, then reporting.
+ * From 1000px the street takes the wide column and the other two share the narrow one.
+ */
+.place-grid,
+.place-now,
+.place-main,
+.place-more,
+.scene {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-content: start;
+}
+
+.scene-panel {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.scene-loading {
+  display: grid;
+  place-items: center;
+  height: min(68vh, 620px);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink-faint);
+}
+
+.switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft, inherit);
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.switch button[aria-pressed='true'] {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.facts-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.facts-strip dd {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .facts-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts-strip div {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .terrain-map,
+  .place-grid .map,
+  .scene-loading {
+    height: 58vh;
+  }
+
+  .spots li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .spots li .button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1000px) {
+  .place-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 20px;
+  }
+
+  .place-main {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .place-now {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .place-more {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }

@@ -97,7 +97,7 @@ const TEXT = {
   worstOf48: { en: 'Worst of the 48 hours', ta: '48 மணி நேரத்தில் மிக மோசம்' },
 
   // 3D view
-  see3d: { en: 'See this street in 3D', ta: 'இந்தத் தெருவை 3D-யில் பார்' },
+  see3d: { en: 'Open the 3D street full width', ta: '3D தெருவை முழு அகலத்தில் திற' },
   backToAnswer: { en: 'Back to the answer', ta: 'பதிலுக்குத் திரும்பு' },
   terrainTitle: { en: 'This street in 3D', ta: 'இந்தத் தெரு முப்பரிமாணத்தில்' },
   terrainIntro: {

@@ -1,5 +1,5 @@
-import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, CubeIcon, UsersThreeIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
-import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeftIcon, ArrowsOutIcon, CheckCircleIcon, ClockIcon, CubeIcon, MapTrifoldIcon, UsersThreeIcon, DropIcon, MapPinIcon, MountainsIcon, PhoneIcon, RoadHorizonIcon, WavesIcon, WhatsappLogoIcon } from '@phosphor-icons/react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { PlaceView as PlaceData, TrackRecordResult } from '../../../engine/src/api/service.ts';
 import { formatHour } from '../../../engine/src/core/assess.ts';
 import { distanceMetres } from '../../../engine/src/core/geo.ts';
@@ -13,6 +13,9 @@ import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
 import { AlertsForm } from '../components/AlertsForm.tsx';
 import { LEVEL, SOURCE_LABEL } from '../level.ts';
 import { stormName } from '../storms.ts';
+
+// The 3D map brings a large library with it, so it is fetched after the answer is on screen.
+const TerrainScene = lazy(() => import('./TerrainView.tsx').then((module) => ({ default: module.TerrainScene })));
 
 const DEPTHS: readonly WaterDepth[] = ['NONE', 'ANKLE', 'KNEE', 'WAIST'];
 const NEARBY_METRES = 2500;
@@ -50,6 +53,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [reports, setReports] = useState<WaterReport[]>([]);
   const [reported, setReported] = useState(false);
+  const [flat, setFlat] = useState(false);
 
   useEffect(() => {
     api.assess(point, date).then(
@@ -163,15 +167,8 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
         </div>
       </section>
 
-      <div className="columns">
-        <section className="card">
-          <div className="card-head">
-            <h2>{date === undefined ? t('next48') : `${t('hoursFrom')} ${formatHour(assessment.from)}`}</h2>
-            <span className="muted">mm / 6 h</span>
-          </div>
-          <Timeline windows={assessment.windows} />
-        </section>
-
+      <div className="place-grid">
+        <div className="place-now">
         <section className="card">
           <div className="card-head">
             <h2>{t('whatToDo')}</h2>
@@ -200,31 +197,28 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
 
         <section className="card">
           <div className="card-head">
-            <h2>{t('why')}</h2>
+            <h2>{date === undefined ? t('next48') : `${t('hoursFrom')} ${formatHour(assessment.from)}`}</h2>
+            <span className="muted">mm / 6 h</span>
           </div>
-          {language === 'ta' && <p className="muted">{t('whyNote')}</p>}
-          <ul className="evidence">
-            {assessment.evidence.map((item) => (
-              <li key={item.statement}>
-                <span className={`source source-${item.source.toLowerCase()}`}>{SOURCE_LABEL[item.source]}</span>
-                <span>
-                  {item.statement}.{' '}
-                  {item.link !== undefined && (
-                    <a href={item.link} target="_blank" rel="noreferrer">
-                      Source
-                    </a>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <Timeline windows={assessment.windows} />
         </section>
 
+        </div>
+
+        <div className="place-main">
         <section className="card">
           <div className="card-head">
             <h2>{t('thisSpot')}</h2>
+            <div className="switch" role="group" aria-label={t('thisSpot')}>
+              <button type="button" aria-pressed={!flat} onClick={() => setFlat(false)}>
+                <CubeIcon weight="fill" aria-hidden="true" /> 3D
+              </button>
+              <button type="button" aria-pressed={flat} onClick={() => setFlat(true)}>
+                <MapTrifoldIcon weight="fill" aria-hidden="true" /> 2D
+              </button>
+            </div>
           </div>
-          <dl className="facts">
+          <dl className="facts facts-strip">
             <div>
               <MountainsIcon weight="duotone" aria-hidden="true" />
               <dt>{t('groundHeight')}</dt>
@@ -253,53 +247,38 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
               </dd>
             </div>
           </dl>
-          <CityMap focus={{ point, level: assessment.level }} reports={reports} onPick={(picked) => (location.hash = placeLink(picked.lat, picked.lon, date))} />
-          <a className="button button-solid" href={`#/3d/${point.lat.toFixed(5)},${point.lon.toFixed(5)}${date === undefined ? '' : `/${date}`}`}>
-            <CubeIcon weight="fill" aria-hidden="true" /> {t('see3d')}
+          {flat ? (
+            <CityMap focus={{ point, level: assessment.level }} reports={reports} onPick={(picked) => (location.hash = placeLink(picked.lat, picked.lon, date))} />
+          ) : (
+            <Suspense fallback={<p className="scene-loading">{t('loading')}…</p>}>
+              <TerrainScene point={point} reports={reports} />
+            </Suspense>
+          )}
+          <a className="button button-outline" href={`#/3d/${point.lat.toFixed(5)},${point.lon.toFixed(5)}${date === undefined ? '' : `/${date}`}`}>
+            <ArrowsOutIcon weight="bold" aria-hidden="true" /> {t('see3d')}
           </a>
         </section>
-
-        {date === undefined && (
-          <section className="card">
-            <div className="card-head">
-              <h2>
-                <DropIcon weight="fill" aria-hidden="true" /> {t('reportTitle')}
-              </h2>
-            </div>
-            {reported ? (
-              <div className="thanks">
-                <Mascot mood="wink" size={72} />
-                <p className="notice">{t('reportThanks')}</p>
-              </div>
-            ) : (
-              <div className="depths">
-                {DEPTHS.map((depth) => (
-                  <button key={depth} type="button" className="button button-outline" onClick={() => sendReport(depth)}>
-                    {DEPTH_NAME[depth][language]}
-                  </button>
-                ))}
-              </div>
-            )}
-            <p className="muted">{t('reportNote')}</p>
-            <h3>{t('reportsNearby')}</h3>
-            {reports.length === 0 ? (
-              <p className="muted">{t('noReports')}</p>
-            ) : (
-              <ul className="reports">
-                {reports.slice(0, 8).map((report) => (
-                  <li key={report.id}>
-                    <strong>{DEPTH_NAME[report.depth][language]}</strong>
-                    <span className="muted">
-                      {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-
-        {date === undefined && <AlertsForm street={{ point, name: near?.place.name ?? 'your street' }} />}
+        <section className="card">
+          <div className="card-head">
+            <h2>{t('why')}</h2>
+          </div>
+          {language === 'ta' && <p className="muted">{t('whyNote')}</p>}
+          <ul className="evidence">
+            {assessment.evidence.map((item) => (
+              <li key={item.statement}>
+                <span className={`source source-${item.source.toLowerCase()}`}>{SOURCE_LABEL[item.source]}</span>
+                <span>
+                  {item.statement}.{' '}
+                  {item.link !== undefined && (
+                    <a href={item.link} target="_blank" rel="noreferrer">
+                      Source
+                    </a>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {record !== undefined && (
           <section className="card">
@@ -357,6 +336,52 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             </div>
           </section>
         )}
+        </div>
+
+        <div className="place-more">
+        {date === undefined && (
+          <section className="card">
+            <div className="card-head">
+              <h2>
+                <DropIcon weight="fill" aria-hidden="true" /> {t('reportTitle')}
+              </h2>
+            </div>
+            {reported ? (
+              <div className="thanks">
+                <Mascot mood="wink" size={72} />
+                <p className="notice">{t('reportThanks')}</p>
+              </div>
+            ) : (
+              <div className="depths">
+                {DEPTHS.map((depth) => (
+                  <button key={depth} type="button" className="button button-outline" onClick={() => sendReport(depth)}>
+                    {DEPTH_NAME[depth][language]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="muted">{t('reportNote')}</p>
+            <h3>{t('reportsNearby')}</h3>
+            {reports.length === 0 ? (
+              <p className="muted">{t('noReports')}</p>
+            ) : (
+              <ul className="reports">
+                {reports.slice(0, 8).map((report) => (
+                  <li key={report.id}>
+                    <strong>{DEPTH_NAME[report.depth][language]}</strong>
+                    <span className="muted">
+                      {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {date === undefined && <AlertsForm street={{ point, name: near?.place.name ?? 'your street' }} />}
+
+        </div>
       </div>
     </div>
   );

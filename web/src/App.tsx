@@ -207,7 +207,7 @@ export function App() {
     // Tamil applies from the first page a resident actually uses.
     <LanguageContext.Provider value={route.view === 'home' ? 'en' : language}>
       <TopBar {...chrome} />
-      <main className={route.view === 'home' ? 'page page-wide' : 'page'}>
+      <main className={route.view === 'home' || route.view === 'place' ? 'page page-wide' : 'page'}>
         {route.view === 'home' && <HomeView />}
         {route.view === 'check' && <CheckView key={route.date ?? 'live'} {...(route.date === undefined ? {} : { date: route.date })} />}
         {route.view === 'replay' && <ReplayView />}
