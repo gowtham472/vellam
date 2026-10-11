@@ -4,14 +4,18 @@ import { MemoryRepository } from '../engine/src/api/repository.ts';
 import { routeRequest } from '../engine/src/api/router.ts';
 import { buildSnapshot, type ServiceDependencies } from '../engine/src/api/service.ts';
 import type { HourlyRain, Snapshot } from '../engine/src/core/types.ts';
+import placesData from '../engine/src/data/chennai-places.json' with { type: 'json' };
 
 const NOW = new Date('2026-10-11T08:00:00Z');
+const TOTAL = placesData.places.length;
+const FIFTH = placesData.places[4] as (typeof placesData.places)[number];
 
 function rain(mmPerHour: number): HourlyRain[] {
   return Array.from({ length: 144 }, (_, i) => ({ time: addHours('2026-10-08T00:00', i), mm: i < 85 ? 0 : mmPerHour }));
 }
 
 interface Harness extends ServiceDependencies {
+  fetchForecast: ServiceDependencies["fetchForecast"];
   repository: MemoryRepository;
   alerts: { subject: string; message: string }[];
   subscribed: string[];
@@ -19,6 +23,8 @@ interface Harness extends ServiceDependencies {
 }
 
 function dependencies(mmPerHour: number): Harness {
+  // Tests swap single dependencies, so the harness is built mutable.
+
   const harness: Harness = {
     mmPerHour,
     alerts: [],
@@ -65,12 +71,33 @@ describe('buildSnapshot', () => {
     deps.mmPerHour = 9;
     // The hourly cache would otherwise serve the dry assessments again.
     deps.repository = new MemoryRepository();
-    await deps.repository.saveSnapshot('LIVE', { basis: 'FORECAST', from: '', generatedAt: '', places: [] });
+    await deps.repository.saveSnapshot('LIVE', { basis: 'FORECAST', from: '', generatedAt: '', places: [], missing: [] });
     await buildSnapshot(deps);
     await buildSnapshot(deps);
     expect(deps.alerts).toHaveLength(1);
     expect(deps.alerts[0]?.subject).toMatch(/^Vellam: flooding likely in \d+ Chennai localities$/);
     expect(deps.alerts[0]?.message).toContain('Velachery');
+  });
+
+  it('retries a place that failed, and names one that failed twice instead of failing the city', async () => {
+    const deps = dependencies(0);
+    let calls = 0;
+    const steady = deps.fetchForecast;
+    deps.fetchForecast = (point, now) => {
+      calls += 1;
+      // The third place fails once; the fifth fails every time.
+      if (calls === 3 || point.lat === FIFTH.lat) return Promise.reject(new Error('The service is overloaded'));
+      return steady(point, now);
+    };
+    const snapshot = await buildSnapshot(deps);
+    expect(snapshot.missing).toEqual([FIFTH.name]);
+    expect(snapshot.places).toHaveLength(TOTAL - 1);
+  });
+
+  it('fails outright only when no place at all can be assessed', async () => {
+    const deps = dependencies(0);
+    deps.fetchForecast = () => Promise.reject(new Error('The service is overloaded'));
+    await expect(buildSnapshot(deps)).rejects.toThrow('No locality could be assessed');
   });
 
   it('stores a replay under its date and never alerts for the past', async () => {

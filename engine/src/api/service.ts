@@ -199,17 +199,33 @@ function summarizePlace(place: (typeof placesData.places)[number], assessment: A
 export async function buildSnapshot(deps: ServiceDependencies, date?: string): Promise<Snapshot> {
   const places: PlaceSummary[] = [];
   let from = '';
-  for (const place of placesData.places) {
-    const assessment = await assessPlace(deps, { lat: place.lat, lon: place.lon }, date);
-    from = assessment.from;
-    places.push(summarizePlace(place, assessment));
-    await deps.pause?.();
+  // A place that fails is tried once more after all the others, by which time a brief
+  // outage at the source has usually passed. One that fails twice is named in `missing`
+  // so that a single bad answer does not cost the whole city its map.
+  let pending = [...placesData.places];
+  for (let pass = 0; pass < 2 && pending.length > 0; pass += 1) {
+    const failed: typeof pending = [];
+    for (const place of pending) {
+      try {
+        const assessment = await assessPlace(deps, { lat: place.lat, lon: place.lon }, date);
+        from = assessment.from;
+        places.push(summarizePlace(place, assessment));
+      } catch (error) {
+        console.error('Snapshot could not assess a place', { place: place.name, pass, error });
+        failed.push(place);
+      }
+      await deps.pause?.();
+    }
+    pending = failed;
   }
+  if (places.length === 0) throw new Error('No locality could be assessed; the weather source is unavailable');
+  places.sort((a, b) => a.name.localeCompare(b.name));
   const snapshot: Snapshot = {
     basis: date === undefined ? 'FORECAST' : 'REPLAY',
     from,
     generatedAt: deps.now().toISOString(),
     places,
+    missing: pending.map((place) => place.name),
   };
   const key = date ?? LIVE_SNAPSHOT;
   const previous = date === undefined ? await deps.repository.getSnapshot(key) : undefined;

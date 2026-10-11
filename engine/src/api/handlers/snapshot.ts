@@ -12,12 +12,15 @@ const deps = awsDependencies({ pauseMs: 1200 });
  * Invoked by EventBridge Scheduler with no input to refresh the live snapshot, or by hand
  * with `{ "date": "2023-12-04" }` to store the replay of a past storm.
  */
-export async function handler(event: { date?: string } | undefined): Promise<{ basis: string; from: string; places: number; atRisk: number }> {
+export async function handler(
+  event: { date?: string } | undefined,
+): Promise<{ basis: string; from: string; places: number; atRisk: number; missing: readonly string[] }> {
   const snapshot = await buildSnapshot(deps, readDate(event?.date));
   return {
     basis: snapshot.basis,
     from: snapshot.from,
     places: snapshot.places.length,
     atRisk: snapshot.places.filter((place) => place.level === 'HIGH' || place.level === 'SEVERE').length,
+    missing: snapshot.missing,
   };
 }

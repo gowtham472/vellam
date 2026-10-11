@@ -121,4 +121,6 @@ export interface Snapshot {
   readonly from: string;
   readonly generatedAt: string;
   readonly places: readonly PlaceSummary[];
+  /** Localities left out because the weather or terrain source failed twice for them. */
+  readonly missing: readonly string[];
 }

@@ -18,13 +18,29 @@ interface HourlyResponse {
   readonly reason?: string;
 }
 
+const RETRY_DELAYS_MS = [1200, 3500];
+
+/**
+ * Open-Meteo is a free service and now and then answers that it is overloaded, or times
+ * out. Those clear within seconds, so the request is tried up to three times. Its
+ * per-minute limit is not retried: waiting it out would take longer than a caller should.
+ */
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-  const body = (await response.json()) as T & { error?: boolean; reason?: string };
-  if (!response.ok || body.error === true) {
-    throw new Error(`Open-Meteo refused the request: ${body.reason ?? `status ${String(response.status)}`}`);
+  let failure: unknown;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+      const body = (await response.json()) as T & { error?: boolean; reason?: string };
+      if (response.ok && body.error !== true) return body;
+      failure = new Error(`Open-Meteo refused the request: ${body.reason ?? `status ${String(response.status)}`}`);
+      if (response.status === 429 || (response.status < 500 && !/overloaded/i.test(body.reason ?? ''))) break;
+    } catch (error) {
+      failure = error;
+    }
+    const delay = RETRY_DELAYS_MS[attempt];
+    if (delay !== undefined) await new Promise((resolve) => setTimeout(resolve, delay));
   }
-  return body;
+  throw failure;
 }
 
 function coordinates(point: Point): string {
