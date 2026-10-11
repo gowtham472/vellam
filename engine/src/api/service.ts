@@ -2,12 +2,13 @@ import { assess } from '../core/assess.ts';
 import { distanceMetres } from '../core/geo.ts';
 import { applyReports, type NearbyReport } from '../core/reports.ts';
 import { DOWNSTREAM, RIVER_REACH_METRES, type ReservoirReport, type RiverExposure } from '../core/reservoirs.ts';
-import { GUIDANCE_SOURCE, guidanceFor, HELPLINE_SOURCE, HELPLINES, type Guidance, type Language } from '../core/guidance.ts';
-import type { Assessment, ForecastCheck, HourlyRain, Level, PlaceSummary, Point, Snapshot, Terrain, Watch, WaterDepth, WaterReport } from '../core/types.ts';
+import { GUIDANCE_SOURCE, guidanceFor, HELPLINE_SOURCE, HELPLINES, type Guidance, type Helpline } from '../core/guidance.ts';
+import type { Assessment, ForecastCheck, HourlyRain, Level, NearestWater, PlaceSummary, Point, Snapshot, Terrain, Watch, WaterDepth, WaterReport } from '../core/types.ts';
 import { dailyChecks, summarize, type CheckedHour, type TrackRecord } from '../core/verify.ts';
 import { isInsideMap, nearestFloodedStreet, nearestNamedWater, nearestWater, type FloodHistory, type WaterMap } from '../core/water.ts';
 import floodData from '../data/chennai-flooded-2015.json' with { type: 'json' };
 import placesData from '../data/chennai-places.json' with { type: 'json' };
+import citiesData from '../data/india-cities.json' with { type: 'json' };
 import waterData from '../data/chennai-water.json' with { type: 'json' };
 import { chennaiHour, shiftDate } from '../sources/open-meteo.ts';
 import { placeKey, type Repository } from './repository.ts';
@@ -39,6 +40,8 @@ export interface ServiceDependencies {
   fetchForecast(point: Point, now: Date): Promise<RainSeries>;
   fetchReplay(point: Point, date: string): Promise<RainSeries>;
   fetchTerrain(point: Point): Promise<Terrain>;
+  /** Water within a kilometre of a place outside Chennai. Absent where no such map is configured. */
+  fetchNearbyWater?(point: Point): Promise<WaterMap>;
   fetchForecastHistory(point: Point, days: number): Promise<CheckedHour[]>;
   /** Today's reservoir bulletin, or the one for a past date. */
   fetchReservoirs(date?: string): Promise<ReservoirReport>;
@@ -131,11 +134,30 @@ async function terrainFor(deps: ServiceDependencies, point: Point): Promise<Terr
 }
 
 /**
+ * The nearest water to a place outside Chennai: null when none is within a kilometre,
+ * undefined when the map could not be read. A failed lookup is not stored, so the next
+ * visitor tries again. Many places assessed in a row pass `lookUp` as false and use only
+ * what earlier visitors' lookups left behind, because one lookup can take five seconds.
+ */
+async function waterOutsideChennai(deps: ServiceDependencies, point: Point, lookUp: boolean): Promise<NearestWater | null | undefined> {
+  const known = await deps.repository.getNearbyWater(point);
+  if (known !== undefined || !lookUp || deps.fetchNearbyWater === undefined) return known;
+  try {
+    const nearest = nearestWater(await deps.fetchNearbyWater(point), point) ?? null;
+    await deps.repository.saveNearbyWater(point, nearest);
+    return nearest;
+  } catch (error) {
+    console.error('Water near a place could not be read', { error });
+    return undefined;
+  }
+}
+
+/**
  * Assesses a place from the live forecast, or from the historical record when `date` is
  * given. Live assessments are reused within the hour, because the forecast they rest on
  * does not change more often than that.
  */
-export async function assessPlace(deps: ServiceDependencies, point: Point, date?: string): Promise<Assessment> {
+export async function assessPlace(deps: ServiceDependencies, point: Point, date?: string, lookUpWater = true): Promise<Assessment> {
   const now = deps.now();
   const hour = chennaiHour(now);
   if (date === undefined) {
@@ -143,12 +165,13 @@ export async function assessPlace(deps: ServiceDependencies, point: Point, date?
     if (cached !== undefined) return cached;
   }
   const mapped = isInsideMap(WATER_MAP, point);
-  const [rain, terrain, riverExposure] = await Promise.all([
+  const [rain, terrain, riverExposure, searched] = await Promise.all([
     date === undefined ? deps.fetchForecast(point, now) : deps.fetchReplay(point, date),
     terrainFor(deps, point),
     mapped ? riverExposureFor(deps, point, date) : Promise.resolve(undefined),
+    mapped ? Promise.resolve(undefined) : waterOutsideChennai(deps, point, lookUpWater),
   ]);
-  const water = mapped ? nearestWater(WATER_MAP, point) : undefined;
+  const water = mapped ? nearestWater(WATER_MAP, point) : (searched ?? undefined);
   const floodedStreetMetres = mapped ? nearestFloodedStreet(FLOOD_HISTORY, point) : undefined;
   const assessment = assess({
     point,
@@ -157,20 +180,24 @@ export async function assessPlace(deps: ServiceDependencies, point: Point, date?
     basis: date === undefined ? 'FORECAST' : 'REPLAY',
     terrain,
     mapped,
+    ...(searched === undefined ? {} : { waterSearched: true }),
     ...(water === undefined ? {} : { nearestWater: water }),
     ...(floodedStreetMetres === undefined ? {} : { floodedStreetMetres }),
     ...(riverExposure === undefined ? {} : { riverExposure }),
   });
-  if (date === undefined) await deps.repository.saveAssessment(point, hour, assessment, now);
+  // An answer missing its water because the map was slow is not kept for the hour, so the
+  // next request asks the map again.
+  const waterMissed = !mapped && lookUpWater && searched === undefined && deps.fetchNearbyWater !== undefined;
+  if (date === undefined && !waterMissed) await deps.repository.saveAssessment(point, hour, assessment, now);
   return assessment;
 }
 
 export interface PlaceView {
   readonly assessment: Assessment;
-  readonly guidance: Record<Language, Guidance>;
+  readonly guidance: Guidance;
   readonly reports: readonly WaterReport[];
   readonly sources: { readonly guidance: string; readonly helplines: string };
-  readonly helplines: typeof HELPLINES;
+  readonly helplines: readonly Helpline[];
 }
 
 /** Everything the dashboard shows for one place. */
@@ -190,10 +217,10 @@ export async function viewPlace(deps: ServiceDependencies, point: Point, date?: 
   const assessment = applyReports(base, nearby);
   return {
     assessment,
-    guidance: { en: guidanceFor(assessment.level, 'en'), ta: guidanceFor(assessment.level, 'ta') },
+    guidance: guidanceFor(assessment.level),
     reports,
     sources: { guidance: GUIDANCE_SOURCE, helplines: HELPLINE_SOURCE },
-    helplines: HELPLINES,
+    helplines: HELPLINES.filter((line) => line.reach === 'INDIA' || assessment.mapped),
   };
 }
 
@@ -234,8 +261,18 @@ export async function createReport(deps: ServiceDependencies, body: unknown): Pr
   return report;
 }
 
-export function listPlaces(): typeof placesData.places {
-  return placesData.places;
+interface ListedPlace {
+  readonly name: string;
+  readonly kind: PlaceSummary['kind'];
+  readonly lat: number;
+  readonly lon: number;
+}
+
+const LOCALITIES: readonly ListedPlace[] = placesData.places.map((place) => ({ ...place, kind: 'LOCALITY' }));
+const CITIES: readonly ListedPlace[] = citiesData.places.map((place) => ({ ...place, kind: 'CITY' }));
+
+export function listPlaces(): readonly ListedPlace[] {
+  return [...LOCALITIES, ...CITIES];
 }
 
 const LIVE_SNAPSHOT = 'LIVE';
@@ -243,10 +280,10 @@ const CITY_TOPIC = 'CITY';
 const MAX_WATCHES = 100;
 const ALERT_LEVELS: readonly Level[] = ['HIGH', 'SEVERE'];
 
-function summarizePlace(place: (typeof placesData.places)[number], assessment: Assessment): PlaceSummary {
+function summarizePlace(place: ListedPlace, assessment: Assessment): PlaceSummary {
   return {
     name: place.name,
-    ta: place.ta,
+    kind: place.kind,
     point: { lat: place.lat, lon: place.lon },
     level: assessment.level,
     worst24hMm: Math.max(0, ...assessment.windows.map((window) => window.trailing24hMm)),
@@ -271,12 +308,13 @@ export async function buildSnapshot(deps: ServiceDependencies, date?: string): P
   // A place that fails is tried once more after all the others, by which time a brief
   // outage at the source has usually passed. One that fails twice is named in `missing`
   // so that a single bad answer does not cost the whole city its map.
-  let pending = [...placesData.places];
+  // The storms replayed are Chennai's, so a replay covers its localities only.
+  let pending = date === undefined ? listPlaces() : LOCALITIES;
   for (let pass = 0; pass < 2 && pending.length > 0; pass += 1) {
-    const failed: typeof pending = [];
+    const failed: ListedPlace[] = [];
     for (const place of pending) {
       try {
-        const assessment = await assessPlace(deps, { lat: place.lat, lon: place.lon }, date);
+        const assessment = await assessPlace(deps, { lat: place.lat, lon: place.lon }, date, false);
         from = assessment.from;
         windowStarts = assessment.windows.map((window) => window.start);
         places.push(summarizePlace(place, assessment));
@@ -308,9 +346,9 @@ export async function buildSnapshot(deps: ServiceDependencies, date?: string): P
     if (atRisk.length > 0 && !wasAtRisk) {
       await deps.publishAlert?.(
         CITY_TOPIC,
-        `Vellam: flooding likely in ${String(atRisk.length)} Chennai localit${atRisk.length === 1 ? 'y' : 'ies'}`,
+        `Vellam: flooding likely in ${String(atRisk.length)} place${atRisk.length === 1 ? '' : 's'}`,
         [
-          'The rain forecast for the next 48 hours puts these localities at HIGH or SEVERE risk:',
+          'The rain forecast for the next 48 hours puts these places at HIGH or SEVERE risk:',
           '',
           ...atRisk.map((place) => `- ${place.name}: ${place.level}, up to ${String(place.worst24hMm)} mm in 24 hours`),
           '',
@@ -333,7 +371,7 @@ async function checkWatches(deps: ServiceDependencies): Promise<void> {
       const assessment = await assessPlace(deps, watch.point);
       const wasAtRisk = watch.lastLevel !== undefined && ALERT_LEVELS.includes(watch.lastLevel);
       if (ALERT_LEVELS.includes(assessment.level) && !wasAtRisk) {
-        const headline = guidanceFor(assessment.level, 'en');
+        const headline = guidanceFor(assessment.level);
         await deps.publishAlert?.(
           watch.key,
           `Vellam: ${assessment.level} flood risk at ${watch.name}`,
@@ -384,6 +422,6 @@ export async function subscribe(deps: ServiceDependencies, body: unknown): Promi
     message:
       street === undefined
         ? 'Check your inbox and confirm the subscription to start receiving alerts'
-        : `Check your inbox and confirm. You will hear when ${name} reaches high risk, and when risk appears anywhere in Chennai`,
+        : `Check your inbox and confirm. You will hear when ${name} reaches high risk, and when risk appears in the places Vellam watches`,
   };
 }

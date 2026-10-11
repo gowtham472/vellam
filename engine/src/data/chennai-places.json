@@ -3,391 +3,326 @@
  "places": [
   {
    "name": "Adyar",
-   "ta": "அடையாறு",
    "lat": 13.00645,
    "lon": 80.25778
   },
   {
    "name": "Alandur",
-   "ta": "ஆலந்தூர்",
    "lat": 13.00426,
    "lon": 80.20145
   },
   {
    "name": "Ambattur",
-   "ta": "அம்பத்தூர்",
    "lat": 13.10557,
    "lon": 80.16396
   },
   {
    "name": "Anakaputhur",
-   "ta": "அனகாபுத்தூர்",
    "lat": 12.98062,
    "lon": 80.12976
   },
   {
    "name": "Anna Nagar",
-   "ta": "அண்ணா நகர்",
    "lat": 13.08825,
    "lon": 80.20734
   },
   {
    "name": "Arumbakkam",
-   "ta": "அரும்பாக்கம்",
    "lat": 13.07437,
    "lon": 80.20813
   },
   {
    "name": "Ashok Nagar",
-   "ta": "அஷோக் நகர்",
    "lat": 13.03593,
    "lon": 80.21457
   },
   {
    "name": "Avadi",
-   "ta": "மவுண்ட் - பூந்தமல்லி - ஆவடி சாலை",
    "lat": 13.02418,
    "lon": 80.17825
   },
   {
    "name": "Besant Nagar",
-   "ta": "பெசன்ட் நகர்",
    "lat": 12.99969,
    "lon": 80.26823
   },
   {
    "name": "Chetpet",
-   "ta": "சேத்துப்பட்டு",
    "lat": 13.07174,
    "lon": 80.2438
   },
   {
    "name": "Choolaimedu",
-   "ta": "",
    "lat": 13.06663,
    "lon": 80.23052
   },
   {
    "name": "Chromepet",
-   "ta": "குரோம்பேட்டை",
    "lat": 12.95219,
    "lon": 80.14117
   },
   {
    "name": "East Tambaram",
-   "ta": "கிழக்கு தாம்பரம்",
    "lat": 12.92651,
    "lon": 80.13145
   },
   {
    "name": "Egmore",
-   "ta": "எழும்பூர்",
    "lat": 13.07283,
    "lon": 80.25769
   },
   {
    "name": "Ennore",
-   "ta": "எண்ணூர்",
    "lat": 13.22583,
    "lon": 80.32436
   },
   {
    "name": "Guindy",
-   "ta": "கிண்டி",
    "lat": 13.00867,
    "lon": 80.21261
   },
   {
    "name": "K. K. Nagar",
-   "ta": "",
    "lat": 13.0408,
    "lon": 80.20298
   },
   {
    "name": "Kelambakkam",
-   "ta": "கேளம்பாக்கம்",
    "lat": 12.78714,
    "lon": 80.21999
   },
   {
    "name": "Kodambakkam",
-   "ta": "கோடம்பாக்கம்",
    "lat": 13.04921,
    "lon": 80.22428
   },
   {
    "name": "Kolathur",
-   "ta": "கொளத்தூர்",
    "lat": 13.12365,
    "lon": 80.21288
   },
   {
    "name": "Korattur",
-   "ta": "கொரட்டூர்",
    "lat": 13.11155,
    "lon": 80.18463
   },
   {
    "name": "Kotturpuram",
-   "ta": "கோட்டூர்புரம்",
    "lat": 13.01937,
    "lon": 80.24355
   },
   {
    "name": "Kovilambakkam",
-   "ta": "கோவிலம்பாக்கம்",
    "lat": 12.94068,
    "lon": 80.17999
   },
   {
    "name": "Kundrathur",
-   "ta": "குன்றத்தூர்",
    "lat": 12.99577,
    "lon": 80.09731
   },
   {
    "name": "Madhavaram",
-   "ta": "மாதவரம்",
    "lat": 13.14136,
    "lon": 80.23251
   },
   {
    "name": "Madipakkam",
-   "ta": "மடிப்பாக்கம்",
    "lat": 12.96113,
    "lon": 80.20013
   },
   {
    "name": "Mambalam",
-   "ta": "மாம்பலம்",
    "lat": 13.03807,
    "lon": 80.22778
   },
   {
    "name": "Manali",
-   "ta": "மணலி",
    "lat": 13.18106,
    "lon": 80.26942
   },
   {
    "name": "Manapakkam",
-   "ta": "மணப்பாக்கம்",
    "lat": 13.01475,
    "lon": 80.17449
   },
   {
    "name": "Medavakkam",
-   "ta": "",
    "lat": 13.08947,
    "lon": 80.24125
   },
   {
    "name": "Mudichur",
-   "ta": "முடிச்சூர்",
    "lat": 12.91498,
    "lon": 80.06884
   },
   {
    "name": "Mugalivakkam",
-   "ta": "முகலிவாக்கம்",
    "lat": 13.02058,
    "lon": 80.16852
   },
   {
    "name": "Mylapore",
-   "ta": "மயிலாப்பூர்",
    "lat": 13.03165,
    "lon": 80.27002
   },
   {
    "name": "Nanganallur",
-   "ta": "நங்கநல்லூர்",
    "lat": 12.98012,
    "lon": 80.1849
   },
   {
    "name": "Nungambakkam",
-   "ta": "நுங்கம்பாக்கம்",
    "lat": 13.06206,
    "lon": 80.24049
   },
   {
    "name": "Pallavaram",
-   "ta": "பல்லாவரம்",
    "lat": 12.96547,
    "lon": 80.14512
   },
   {
    "name": "Pallikaranai",
-   "ta": "பள்ளிக்கரணை",
    "lat": 12.93047,
    "lon": 80.20777
   },
   {
    "name": "Pammal",
-   "ta": "",
    "lat": 13.03479,
    "lon": 80.19947
   },
   {
    "name": "Perambur",
-   "ta": "பெரம்பூர்",
    "lat": 13.11212,
    "lon": 80.24502
   },
   {
    "name": "Perumbakkam",
-   "ta": "",
    "lat": 12.88434,
    "lon": 80.20997
   },
   {
    "name": "Perungudi",
-   "ta": "பெருங்குடி",
    "lat": 12.97102,
    "lon": 80.24181
   },
   {
    "name": "Poonamallee",
-   "ta": "பூந்தமல்லி",
    "lat": 13.04174,
    "lon": 80.10069
   },
   {
    "name": "Porur",
-   "ta": "போரூர்",
    "lat": 13.03246,
    "lon": 80.15829
   },
   {
    "name": "Pulianthope",
-   "ta": "புளியந்தோப்பு",
    "lat": 13.10084,
    "lon": 80.26262
   },
   {
    "name": "Ramapuram",
-   "ta": "ராமாவரம்",
    "lat": 13.03142,
    "lon": 80.17891
   },
   {
    "name": "Royapuram",
-   "ta": "ராயபுரம்",
    "lat": 13.10429,
    "lon": 80.29361
   },
   {
    "name": "Saidapet",
-   "ta": "சைதாப்பேட்டை",
    "lat": 13.02082,
    "lon": 80.22395
   },
   {
    "name": "Selaiyur",
-   "ta": "சேலையூர்",
    "lat": 12.91781,
    "lon": 80.13795
   },
   {
    "name": "Sembakkam",
-   "ta": "செம்பாக்கம்",
    "lat": 12.92738,
    "lon": 80.15964
   },
   {
    "name": "Semmancheri",
-   "ta": "",
    "lat": 12.88032,
    "lon": 80.22124
   },
   {
    "name": "Sholinganallur",
-   "ta": "சோழிங்கநல்லூர்",
    "lat": 12.89354,
    "lon": 80.23206
   },
   {
    "name": "St. Thomas Mount",
-   "ta": "பரங்கிமலை",
    "lat": 12.99477,
    "lon": 80.19937
   },
   {
    "name": "T. Nagar",
-   "ta": "",
    "lat": 13.03783,
    "lon": 80.23184
   },
   {
    "name": "Thiruvanmiyur",
-   "ta": "திருவான்மியூர்",
    "lat": 12.98589,
    "lon": 80.26442
   },
   {
    "name": "Thoraipakkam",
-   "ta": "துறைப்பாக்கம்",
    "lat": 12.94918,
    "lon": 80.24069
   },
   {
    "name": "Tirusulam",
-   "ta": "திருசூலம்",
    "lat": 12.98046,
    "lon": 80.16579
   },
   {
    "name": "Tiruvottiyur",
-   "ta": "திருவொற்றியூர்",
    "lat": 13.15864,
    "lon": 80.29621
   },
   {
    "name": "Triplicane",
-   "ta": "திருவல்லிக்கேணி",
    "lat": 13.06043,
    "lon": 80.27507
   },
   {
    "name": "Urapakkam",
-   "ta": "ஊரப்பாக்கம்",
    "lat": 12.86367,
    "lon": 80.07216
   },
   {
    "name": "Vadapalani",
-   "ta": "வடபழனி",
    "lat": 13.0503,
    "lon": 80.21183
   },
   {
    "name": "Varadharajapuram",
-   "ta": "வரதராஜபுரம்",
    "lat": 13.11246,
    "lon": 80.15339
   },
   {
    "name": "Velachery",
-   "ta": "வேளச்சேரி",
    "lat": 12.98017,
    "lon": 80.22285
   },
   {
    "name": "Virugambakkam",
-   "ta": "விருகம்பாக்கம்",
    "lat": 13.05226,
    "lon": 80.19169
   },
   {
    "name": "Vyasarpadi",
-   "ta": "வியாசர்பாடி",
    "lat": 13.11305,
    "lon": 80.25872
   },
   {
    "name": "West Tambaram",
-   "ta": "",
    "lat": 12.92565,
    "lon": 80.10437
   }

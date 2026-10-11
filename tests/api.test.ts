@@ -46,13 +46,12 @@ async function get<T>(deps: ServiceDependencies, path: string, query: Record<str
 }
 
 describe('GET /assess', () => {
-  it('returns the assessment with guidance in both languages and the helplines', async () => {
+  it('returns the assessment with guidance and the helplines', async () => {
     const { status, body } = await get<PlaceView>(dependencies(), '/assess', VELACHERY);
     expect(status).toBe(200);
     expect(body.assessment.basis).toBe('FORECAST');
     expect(body.assessment.from).toBe('2026-10-11T13:00');
-    expect(body.guidance.en.actions.length).toBeGreaterThan(0);
-    expect(body.guidance.ta.headline).not.toBe(body.guidance.en.headline);
+    expect(body.guidance.actions.length).toBeGreaterThan(0);
     expect(body.helplines.map((line) => line.number)).toContain('1913');
   });
 
@@ -160,7 +159,7 @@ describe('reports', () => {
     const after = (await get<PlaceView>(deps, '/assess', VELACHERY)).body;
     expect(after.assessment.level).toBe('HIGH');
     expect(after.assessment.raisedByReports).toBe(true);
-    expect(after.guidance.en.headline).toBe('Flooding is likely here');
+    expect(after.guidance.headline).toBe('Flooding is likely here');
   });
 
   it('stores a report and returns it to people nearby, newest first', async () => {

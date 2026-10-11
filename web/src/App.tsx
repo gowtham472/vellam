@@ -11,7 +11,8 @@ import {
 } from '@phosphor-icons/react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Mascot } from './components/Mascot.tsx';
-import { LanguageContext, useText, type Language, type TextKey } from './i18n.ts';
+import { LanguageContext, LANGUAGES, loadLanguage, useText, type Language, type TextKey, type Translation } from './i18n.ts';
+import ENGLISH from './locales/en.json';
 import { CheckView } from './views/CheckView.tsx';
 import { HomeView } from './views/HomeView.tsx';
 import { HowView } from './views/HowView.tsx';
@@ -100,6 +101,8 @@ function remember(key: string, value: string): void {
   }
 }
 
+const ENGLISH_ONLY: Translation = { language: 'en', table: ENGLISH };
+
 function initialTheme(): Theme {
   return stored('vellam-theme', ['light', 'dark']) ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
@@ -108,10 +111,11 @@ interface ChromeProps {
   readonly section: Section;
   readonly theme: Theme;
   readonly onTheme: () => void;
-  readonly onLanguage: () => void;
+  readonly language: Language;
+  readonly onLanguage: (language: Language) => void;
 }
 
-function TopBar({ section, theme, onTheme, onLanguage }: ChromeProps) {
+function TopBar({ section, theme, onTheme, language, onLanguage }: ChromeProps) {
   const { t } = useText();
   const ThemeIcon = theme === 'dark' ? SunIcon : MoonIcon;
   return (
@@ -121,7 +125,6 @@ function TopBar({ section, theme, onTheme, onLanguage }: ChromeProps) {
           <Mascot mood="happy" size={40} />
           <span>
             <strong>Vellam</strong>
-            {section !== 'home' && <small lang="ta">வெள்ளம்</small>}
           </span>
         </a>
         <nav className="topnav" aria-label="Main">
@@ -137,10 +140,22 @@ function TopBar({ section, theme, onTheme, onLanguage }: ChromeProps) {
             <ThemeIcon weight="bold" aria-hidden="true" />
           </button>
           {section !== 'home' && (
-            <button type="button" className="chip-button" onClick={onLanguage}>
+            <label className="language">
               <TranslateIcon weight="bold" aria-hidden="true" />
-              {t('language')}
-            </button>
+              <select
+                value={language}
+                aria-label={t('language')}
+                onChange={(event) => {
+                  onLanguage(event.target.value as Language);
+                }}
+              >
+                {LANGUAGES.map((item) => (
+                  <option key={item.code} value={item.code} lang={item.code}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
       </div>
@@ -165,7 +180,14 @@ function TabBar({ section }: { section: Section }) {
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(location.hash));
-  const [language, setLanguage] = useState<Language>(() => stored('vellam-language', ['en', 'ta']) ?? 'en');
+  const [language, setLanguage] = useState<Language>(
+    () =>
+      stored(
+        'vellam-language',
+        LANGUAGES.map((item) => item.code),
+      ) ?? 'en',
+  );
+  const [translation, setTranslation] = useState<Translation>({ language: 'en', table: ENGLISH });
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -181,12 +203,25 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    // Urdu reads right to left; every other language offered reads left to right.
+    document.documentElement.dir = language === 'ur' ? 'rtl' : 'ltr';
     remember('vellam-language', language);
+    let current = true;
+    // On a failed fetch the page stays in the language it was already showing.
+    loadLanguage(language).then(
+      (table) => {
+        if (current) setTranslation({ language, table });
+      },
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
   }, [language]);
 
   useEffect(() => {
     document.documentElement.dataset['theme'] = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#1c232b' : '#ffffff');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#000000' : '#ffffff');
     remember('vellam-theme', theme);
   }, [theme]);
 
@@ -197,15 +232,14 @@ export function App() {
     onTheme: () => {
       setTheme(theme === 'dark' ? 'light' : 'dark');
     },
-    onLanguage: () => {
-      setLanguage(language === 'en' ? 'ta' : 'en');
-    },
+    language,
+    onLanguage: setLanguage,
   };
 
   return (
     // The landing page is written in English only, so its navigation and footer are too.
-    // Tamil applies from the first page a resident actually uses.
-    <LanguageContext.Provider value={route.view === 'home' ? 'en' : language}>
+    // The chosen language applies from the first page a resident actually uses.
+    <LanguageContext.Provider value={route.view === 'home' ? ENGLISH_ONLY : translation}>
       <TopBar {...chrome} />
       <main className={route.view === 'home' || route.view === 'place' ? 'page page-wide' : 'page'}>
         {route.view === 'home' && <HomeView />}

@@ -1,7 +1,7 @@
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import type { ReservoirReport } from '../core/reservoirs.ts';
-import type { Assessment, Point, Snapshot, Terrain, Watch, WaterReport } from '../core/types.ts';
+import type { Assessment, NearestWater, Point, Snapshot, Terrain, Watch, WaterReport } from '../core/types.ts';
 
 /** How long a resident's report stays on the map. Floodwater in a street is news for hours, not days. */
 export const REPORT_LIFETIME_HOURS = 48;
@@ -12,6 +12,9 @@ export interface Repository {
   /** Ground heights never change, so they are kept for good and fetched once per place. */
   getTerrain(point: Point): Promise<Terrain | undefined>;
   saveTerrain(point: Point, terrain: Terrain): Promise<void>;
+  /** The nearest water found for a place outside Chennai: null when none is within reach, undefined when never looked up. */
+  getNearbyWater(point: Point): Promise<NearestWater | null | undefined>;
+  saveNearbyWater(point: Point, water: NearestWater | null): Promise<void>;
   /** A live assessment is reused until the next hourly forecast. */
   getAssessment(point: Point, hour: string): Promise<Assessment | undefined>;
   saveAssessment(point: Point, hour: string, assessment: Assessment, now: Date): Promise<void>;
@@ -65,6 +68,7 @@ function epochSeconds(date: Date, plusHours: number): number {
 
 export class MemoryRepository implements Repository {
   private readonly terrain = new Map<string, Terrain>();
+  private readonly water = new Map<string, NearestWater | null>();
   private readonly assessments = new Map<string, Assessment>();
   readonly reports: WaterReport[] = [];
   readonly snapshots = new Map<string, Snapshot>();
@@ -95,6 +99,15 @@ export class MemoryRepository implements Repository {
 
   saveSnapshot(key: string, snapshot: Snapshot): Promise<void> {
     this.snapshots.set(key, snapshot);
+    return Promise.resolve();
+  }
+
+  getNearbyWater(point: Point): Promise<NearestWater | null | undefined> {
+    return Promise.resolve(this.water.get(placeKey(point)));
+  }
+
+  saveNearbyWater(point: Point, water: NearestWater | null): Promise<void> {
+    this.water.set(placeKey(point), water);
     return Promise.resolve();
   }
 
@@ -137,6 +150,15 @@ export class DynamoRepository implements Repository {
   constructor(client: DynamoDBDocumentClient, table: string) {
     this.client = client;
     this.table = table;
+  }
+
+  async getNearbyWater(point: Point): Promise<NearestWater | null | undefined> {
+    const item = await this.get('WATER', placeKey(point));
+    return item === undefined ? undefined : ((item['water'] as NearestWater | undefined) ?? null);
+  }
+
+  async saveNearbyWater(point: Point, water: NearestWater | null): Promise<void> {
+    await this.client.send(new PutCommand({ TableName: this.table, Item: { pk: 'WATER', sk: placeKey(point), ...(water === null ? {} : { water }) } }));
   }
 
   async getTerrain(point: Point): Promise<Terrain | undefined> {

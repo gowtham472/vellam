@@ -1,5 +1,4 @@
 import '@fontsource-variable/plus-jakarta-sans';
-import '@fontsource-variable/noto-sans-tamil';
 import '@fontsource-variable/jetbrains-mono';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';

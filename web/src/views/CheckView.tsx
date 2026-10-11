@@ -4,28 +4,29 @@ import { formatHour } from '../../../engine/src/core/assess.ts';
 import type { Level, Point, Snapshot } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { placeLink } from '../App.tsx';
-import { CityMap } from '../components/CityMap.tsx';
+import { CityMap, type Region } from '../components/CityMap.tsx';
 import { Finder } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
 import { ReservoirCard } from '../components/ReservoirCard.tsx';
-import { LEVEL_NAME, useText } from '../i18n.ts';
+import { useText } from '../i18n.ts';
 import { LEVEL, LEVELS } from '../level.ts';
 import { stormName } from '../storms.ts';
 
 const FRAME_MS = 900;
 
 function formatTime(iso: string, language: string): string {
-  return new Date(iso).toLocaleString(language === 'ta' ? 'ta-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleString(`${language}-IN`, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
 /** The city map, live or for a replayed storm, with the ways to pick a street. */
 export function CheckView({ date }: { date?: string }) {
-  const { t, language } = useText();
+  const { t, language, levelName } = useText();
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState<string>();
   /** The six hour window shown on the map. Undefined shows each locality's worst level. */
   const [frame, setFrame] = useState<number>();
   const [playing, setPlaying] = useState(false);
+  const [region, setRegion] = useState<Region>(date === undefined ? 'INDIA' : 'CHENNAI');
 
   useEffect(() => {
     api.city(date).then(setSnapshot, (reason: unknown) => {
@@ -81,10 +82,15 @@ export function CheckView({ date }: { date?: string }) {
       <section className="card">
         <div className="card-head">
           <h2>{date === undefined ? t('cityNow') : stormName(date)}</h2>
-          {snapshot !== undefined && date === undefined && (
-            <span className="muted">
-              {t('updated')} {formatTime(snapshot.generatedAt, language)}
-            </span>
+          {date === undefined && (
+            <div className="switch" role="group" aria-label={t('cityNow')}>
+              <button type="button" aria-pressed={region === 'INDIA'} onClick={() => setRegion('INDIA')}>
+                India
+              </button>
+              <button type="button" aria-pressed={region === 'CHENNAI'} onClick={() => setRegion('CHENNAI')}>
+                Chennai
+              </button>
+            </div>
           )}
         </div>
         <ul className="legend" aria-label="Localities by risk level">
@@ -93,13 +99,13 @@ export function CheckView({ date }: { date?: string }) {
             return (
               <li key={level}>
                 <LevelIcon weight="fill" aria-hidden="true" style={{ color: LEVEL[level].colour }} />
-                {LEVEL_NAME[level][language]}
+                {levelName(level)}
                 <strong>{snapshot?.places.filter((place) => levelOf(place) === level).length ?? 0}</strong>
               </li>
             );
           })}
         </ul>
-        <CityMap {...(snapshot === undefined ? {} : { places: snapshot.places })} {...(frame === undefined ? {} : { frame })} onPick={open} />
+        <CityMap {...(snapshot === undefined ? {} : { places: snapshot.places })} {...(frame === undefined ? {} : { frame })} region={region} onPick={open} />
 
         {frames > 0 && (
           <div className="timelapse">
@@ -133,11 +139,13 @@ export function CheckView({ date }: { date?: string }) {
 
         <p className="muted hint">
           <HandTapIcon weight="bold" aria-hidden="true" /> {t('tapMap')}
+          {snapshot !== undefined && date === undefined && ` · ${t('updated')} ${formatTime(snapshot.generatedAt, language)}`}
         </p>
+        {date === undefined && <p className="muted">{t('coverage')}</p>}
         {error !== undefined && <p className="notice notice-error">{error}</p>}
       </section>
 
-      <ReservoirCard {...(date === undefined ? {} : { date })} />
+      {region === 'CHENNAI' && <ReservoirCard {...(date === undefined ? {} : { date })} />}
 
       <section className="card">
         <div className="card-head">
@@ -153,9 +161,9 @@ export function CheckView({ date }: { date?: string }) {
                 <li key={place.name}>
                   <a href={placeLink(place.point.lat, place.point.lon, date)}>
                     <span className="pill" style={{ background: LEVEL[place.level].colour }}>
-                      <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[place.level][language]}
+                      <LevelIcon weight="fill" aria-hidden="true" /> {levelName(place.level)}
                     </span>
-                    <strong>{language === 'ta' && place.ta !== '' ? place.ta : place.name}</strong>
+                    <strong>{place.name}</strong>
                     <span className="muted">
                       {place.worst24hMm} {t('rain24')}
                     </span>

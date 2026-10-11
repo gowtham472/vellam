@@ -6,7 +6,7 @@ const BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://
 
 export interface Place {
   readonly name: string;
-  readonly ta: string;
+  readonly kind: 'LOCALITY' | 'CITY';
   readonly lat: number;
   readonly lon: number;
 }

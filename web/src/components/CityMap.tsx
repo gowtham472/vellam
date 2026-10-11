@@ -3,7 +3,12 @@ import { useEffect, useRef } from 'react';
 import type { Level, PlaceSummary, Point, WaterReport } from '../../../engine/src/core/types.ts';
 import { LEVEL } from '../level.ts';
 
-const CHENNAI: [number, number] = [13.02, 80.2];
+export type Region = 'CHENNAI' | 'INDIA';
+
+const REGIONS: Record<Region, { centre: [number, number]; zoom: number }> = {
+  CHENNAI: { centre: [13.02, 80.2], zoom: 11 },
+  INDIA: { centre: [22.2, 80.5], zoom: 5 },
+};
 
 interface Props {
   readonly places?: readonly PlaceSummary[];
@@ -12,6 +17,8 @@ interface Props {
   readonly reports?: readonly WaterReport[];
   /** Which six hour window to colour the localities by. Without it, their worst level. */
   readonly frame?: number;
+  /** The area the map opens on, and returns to when this changes. */
+  readonly region?: Region;
   readonly onPick: (point: Point) => void;
 }
 
@@ -19,7 +26,7 @@ interface Props {
  * The map is Leaflet driven directly, without a React wrapper: there is one map, its
  * layers are rebuilt when the data changes, and that is all the lifecycle it needs.
  */
-export function CityMap({ places, focus, reports, frame, onPick }: Props) {
+export function CityMap({ places, focus, reports, frame, region = 'CHENNAI', onPick }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -28,7 +35,7 @@ export function CityMap({ places, focus, reports, frame, onPick }: Props) {
 
   useEffect(() => {
     if (container.current === null) return;
-    const created = L.map(container.current, { zoomControl: true, attributionControl: true }).setView(CHENNAI, 11);
+    const created = L.map(container.current, { zoomControl: true, attributionControl: true }).setView(REGIONS[region].centre, REGIONS[region].zoom);
     // OpenStreetMap's own tiles need no key. Their usage policy asks for attribution and
     // light use, which a hackathon dashboard is; heavier traffic would need a tile provider.
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -47,13 +54,19 @@ export function CityMap({ places, focus, reports, frame, onPick }: Props) {
   }, []);
 
   useEffect(() => {
+    if (focus === undefined) map.current?.setView(REGIONS[region].centre, REGIONS[region].zoom);
+    // A focused map follows its place, not the region.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region]);
+
+  useEffect(() => {
     const group = layer.current;
     if (group === null || map.current === null) return;
     group.clearLayers();
     for (const place of places ?? []) {
       const level = (frame === undefined ? undefined : place.timeline[frame]) ?? place.level;
       L.circleMarker([place.point.lat, place.point.lon], {
-        radius: 9,
+        radius: place.kind === 'CITY' ? 9 : 7,
         color: '#ffffff',
         weight: 2,
         fillColor: LEVEL[level].colour,
@@ -69,7 +82,7 @@ export function CityMap({ places, focus, reports, frame, onPick }: Props) {
     for (const report of reports ?? []) {
       L.circleMarker([report.point.lat, report.point.lon], {
         radius: 6,
-        color: '#1c232b',
+        color: '#111111',
         weight: 2,
         fillColor: report.depth === 'NONE' ? '#ffffff' : '#1c7ed6',
         fillOpacity: 1,
@@ -80,7 +93,7 @@ export function CityMap({ places, focus, reports, frame, onPick }: Props) {
     if (focus !== undefined) {
       L.circleMarker([focus.point.lat, focus.point.lon], {
         radius: 13,
-        color: '#1c232b',
+        color: '#111111',
         weight: 3,
         fillColor: LEVEL[focus.level].colour,
         fillOpacity: 0.95,
@@ -89,5 +102,5 @@ export function CityMap({ places, focus, reports, frame, onPick }: Props) {
     }
   }, [places, focus, reports, frame]);
 
-  return <div ref={container} className="map" role="application" aria-label="Map of Chennai" />;
+  return <div ref={container} className="map" role="application" aria-label="Map" />;
 }

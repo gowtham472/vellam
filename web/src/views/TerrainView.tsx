@@ -8,7 +8,7 @@ import { distanceMetres } from '../../../engine/src/core/geo.ts';
 import type { Point, WaterReport } from '../../../engine/src/core/types.ts';
 import { api } from '../api.ts';
 import { placeLink } from '../App.tsx';
-import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
+import { useText } from '../i18n.ts';
 import { LEVEL } from '../level.ts';
 
 /**
@@ -228,7 +228,7 @@ function marker(className: string, label: string): HTMLElement {
 
 /** The map, the water slider and the higher ground finder, for any page that has a street. */
 export function TerrainScene({ point, reports }: { point: Point; reports: readonly WaterReport[] }) {
-  const { t } = useText();
+  const { t, depthName } = useText();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<GlMap | null>(null);
   const [ground, setGround] = useState<Ground>();
@@ -337,7 +337,7 @@ export function TerrainScene({ point, reports }: { point: Point; reports: readon
       ...reports
         .filter((report) => report.depth !== 'NONE')
         .map((report) =>
-          new Marker({ element: marker('pin pin-report', DEPTH_NAME[report.depth].en) })
+          new Marker({ element: marker('pin pin-report', depthName(report.depth)) })
             .setLngLat([report.point.lon, report.point.lat])
             .addTo(target),
         ),
@@ -456,7 +456,7 @@ export function TerrainScene({ point, reports }: { point: Point; reports: readon
 }
 
 export function TerrainView({ point, date }: { point: Point; date?: string }) {
-  const { t, language } = useText();
+  const { t, levelName } = useText();
   const [data, setData] = useState<PlaceData>();
 
   useEffect(() => {
@@ -477,7 +477,7 @@ export function TerrainView({ point, date }: { point: Point; date?: string }) {
         </div>
         {data !== undefined && (
           <span className="pill" style={{ background: LEVEL[data.assessment.level].colour }}>
-            {LEVEL_NAME[data.assessment.level][language]}
+            {levelName(data.assessment.level)}
           </span>
         )}
       </header>

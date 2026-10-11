@@ -7,9 +7,9 @@ import type { Point, RainWindow, WaterDepth, WaterReport } from '../../../engine
 import { api, type Place } from '../api.ts';
 import { placeLink } from '../App.tsx';
 import { CityMap } from '../components/CityMap.tsx';
-import { loadPlaces } from '../components/Finder.tsx';
+import { loadPlaces, pickedName } from '../components/Finder.tsx';
 import { Mascot } from '../components/Mascot.tsx';
-import { DEPTH_NAME, LEVEL_NAME, useText } from '../i18n.ts';
+import { useText } from '../i18n.ts';
 import { AlertsForm } from '../components/AlertsForm.tsx';
 import { LEVEL, SOURCE_LABEL } from '../level.ts';
 import { stormName } from '../storms.ts';
@@ -19,6 +19,8 @@ const TerrainScene = lazy(() => import('./TerrainView.tsx').then((module) => ({ 
 
 const DEPTHS: readonly WaterDepth[] = ['NONE', 'ANKLE', 'KNEE', 'WAIST'];
 const NEARBY_METRES = 2500;
+/** A city on the national list names any spot this close to its centre. */
+const CITY_METRES = 6000;
 
 function Timeline({ windows }: { windows: readonly RainWindow[] }) {
   const tallest = Math.max(10, ...windows.map((window) => window.rainMm));
@@ -46,7 +48,7 @@ function ago(iso: string): string {
 }
 
 export function PlaceView({ point, date }: { point: Point; date?: string }) {
-  const { t, language } = useText();
+  const { t, language, levelName, depthName, helplineName, advice: adviceFor } = useText();
   const [data, setData] = useState<PlaceData>();
   const [error, setError] = useState<string>();
   const [record, setRecord] = useState<TrackRecordResult>();
@@ -75,17 +77,13 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
     let best: { place: Place; metres: number } | undefined;
     for (const place of places) {
       const metres = distanceMetres(point, place);
-      if (metres <= NEARBY_METRES && (best === undefined || metres < best.metres)) best = { place, metres };
+      if (metres <= (place.kind === 'CITY' ? CITY_METRES : NEARBY_METRES) && (best === undefined || metres < best.metres)) best = { place, metres };
     }
     return best;
   }, [places, point]);
 
   const title =
-    near === undefined
-      ? `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`
-      : language === 'ta' && near.place.ta !== ''
-        ? near.place.ta
-        : near.place.name;
+    near?.place.name ?? pickedName(point) ?? `${point.lat.toFixed(4)}, ${point.lon.toFixed(4)}`;
   const backHref = date === undefined ? '#/check' : `#/replay/${date}`;
 
   if (error !== undefined) {
@@ -111,12 +109,12 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
   }
 
   const { assessment, guidance, helplines } = data;
-  const advice = guidance[language];
+  const advice = adviceFor(assessment.level, guidance);
   const look = LEVEL[assessment.level];
   const LevelIcon = look.icon;
   const shareText = [
     `Vellam flood check${near === undefined ? '' : `, ${near.place.name}`}: ${assessment.level}.`,
-    guidance.en.headline + '.',
+    guidance.headline + '.',
     assessment.peak === undefined ? '' : `Worst around ${formatHour(assessment.peak.start)}.`,
     `${location.origin}/${placeLink(point.lat, point.lon)}`,
   ]
@@ -148,7 +146,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
             <MapPinIcon weight="fill" aria-hidden="true" /> {title}
           </p>
           <h1>
-            <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[assessment.level][language]}
+            <LevelIcon weight="fill" aria-hidden="true" /> {levelName(assessment.level)}
           </h1>
           <p className="verdict-headline">{advice.headline}</p>
           {assessment.raisedByReports === true && (
@@ -189,7 +187,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
               <a key={line.number} className="helpline" href={`tel:${line.number}`}>
                 <PhoneIcon weight="fill" aria-hidden="true" />
                 <strong>{line.number}</strong>
-                <span>{line[language]}</span>
+                <span>{helplineName(line)}</span>
               </a>
             ))}
           </div>
@@ -228,11 +226,11 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
               <WavesIcon weight="duotone" aria-hidden="true" />
               <dt>{t('nearestWater')}</dt>
               <dd>
-                {!assessment.mapped
-                  ? t('notMapped')
-                  : assessment.nearestWater === undefined
+                {assessment.nearestWater !== undefined
+                  ? `${assessment.nearestWater.name || assessment.nearestWater.kind}, ${String(assessment.nearestWater.distanceMetres)} m`
+                  : assessment.mapped || assessment.waterSearched === true
                     ? t('noneWithinKm')
-                    : `${assessment.nearestWater.name || assessment.nearestWater.kind}, ${String(assessment.nearestWater.distanceMetres)} m`}
+                    : t('notMapped')}
               </dd>
             </div>
             <div>
@@ -262,7 +260,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
           <div className="card-head">
             <h2>{t('why')}</h2>
           </div>
-          {language === 'ta' && <p className="muted">{t('whyNote')}</p>}
+          {language !== 'en' && <p className="muted">{t('whyNote')}</p>}
           <ul className="evidence">
             {assessment.evidence.map((item) => (
               <li key={item.statement}>
@@ -355,7 +353,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
               <div className="depths">
                 {DEPTHS.map((depth) => (
                   <button key={depth} type="button" className="button button-outline" onClick={() => sendReport(depth)}>
-                    {DEPTH_NAME[depth][language]}
+                    {depthName(depth)}
                   </button>
                 ))}
               </div>
@@ -368,7 +366,7 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
               <ul className="reports">
                 {reports.slice(0, 8).map((report) => (
                   <li key={report.id}>
-                    <strong>{DEPTH_NAME[report.depth][language]}</strong>
+                    <strong>{depthName(report.depth)}</strong>
                     <span className="muted">
                       {Math.round(distanceMetres(point, report.point))} m away, {ago(report.at)}
                     </span>

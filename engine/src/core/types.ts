@@ -80,6 +80,8 @@ export interface Assessment {
   readonly floodedStreetMetres?: number;
   /** False when the place is outside the area the Chennai maps cover. */
   readonly mapped: boolean;
+  /** True when water near a place outside the Chennai maps was looked up in OpenStreetMap. */
+  readonly waterSearched?: boolean;
   /** True when neighbours' reports of water, not the forecast, set the level. */
   readonly raisedByReports?: boolean;
 }
@@ -108,7 +110,8 @@ export interface WaterReport {
 /** One locality in a city-wide snapshot. */
 export interface PlaceSummary {
   readonly name: string;
-  readonly ta: string;
+  /** A Chennai locality, or one of the major cities shown on the national map. */
+  readonly kind: 'LOCALITY' | 'CITY';
   readonly point: Point;
   readonly level: Level;
   /** The most rain in any 24 hours of the period assessed. */

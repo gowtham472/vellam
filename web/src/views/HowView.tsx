@@ -1,6 +1,6 @@
 import { CloudRainIcon, DatabaseIcon, MapTrifoldIcon, ScalesIcon, SealCheckIcon, UsersThreeIcon, WarningDiamondIcon } from '@phosphor-icons/react';
 import { Mascot } from '../components/Mascot.tsx';
-import { LEVEL_NAME, useText } from '../i18n.ts';
+import { useText } from '../i18n.ts';
 import { LEVEL } from '../level.ts';
 import type { Level } from '../../../engine/src/core/types.ts';
 
@@ -42,11 +42,11 @@ const WRONG: readonly [string, string, string][] = [
 
 /** How Vellam reaches an answer, and where that answer should not be trusted. */
 export function HowView() {
-  const { t, language } = useText();
+  const { t, language, levelName } = useText();
   const cell = (level: Level) => (
     <td>
       <span className="pill" style={{ background: LEVEL[level].colour }}>
-        {LEVEL_NAME[level][language]}
+        {levelName(level)}
       </span>
     </td>
   );
@@ -60,7 +60,7 @@ export function HowView() {
             Official warnings cover a whole district. Floods happen street by street. Vellam takes the rain forecast for one
             spot and asks what that much rain does to that particular piece of ground.
           </p>
-          {language === 'ta' && <p className="muted">{t('howNote')}</p>}
+          {language !== 'en' && <p className="muted">{t('howNote')}</p>}
         </div>
       </header>
 

@@ -3,6 +3,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { PublishCommand, SNSClient, SubscribeCommand } from '@aws-sdk/client-sns';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { fetchForecast, fetchForecastHistory, fetchReplay, fetchTerrain } from '../sources/open-meteo.ts';
+import { fetchNearbyWater } from '../sources/overpass.ts';
 import { fetchReservoirs } from '../sources/reservoirs.ts';
 import { DynamoRepository } from './repository.ts';
 import type { ServiceDependencies } from './service.ts';
@@ -23,6 +24,7 @@ export function awsDependencies(options: { pauseMs?: number } = {}): ServiceDepe
     fetchForecast,
     fetchReplay,
     fetchTerrain,
+  fetchNearbyWater,
     fetchForecastHistory,
     fetchReservoirs,
     publishAlert: async (topic, subject, message) => {

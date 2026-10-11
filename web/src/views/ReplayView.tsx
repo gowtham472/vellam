@@ -39,7 +39,7 @@ export function ReplayView() {
             <WarningDiamondIcon weight="fill" aria-hidden="true" /> {t('replayResultTitle')}
           </h2>
         </div>
-        {language === 'ta' && <p className="muted">{t('howNote')}</p>}
+        {language !== 'en' && <p className="muted">{t('howNote')}</p>}
         <ul className="prose-list">
           <li>
             Given the rain on record for 4 December 2023, Vellam rated <strong>50</strong> of 65 localities severe,{' '}

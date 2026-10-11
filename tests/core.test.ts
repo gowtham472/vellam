@@ -103,9 +103,9 @@ describe('assess', () => {
     expect(threeWetDays.factors.map((factor) => factor.id)).toEqual(['SATURATED']);
   });
 
-  it('says so when the place is outside the Chennai maps', () => {
+  it('says so when the place is outside Chennai and its water could not be read', () => {
     const result = assess(input({ mapped: false }));
-    expect(result.evidence.some((e) => e.statement.includes('outside the Chennai maps'))).toBe(true);
+    expect(result.evidence.some((e) => e.statement.includes('distance to water was not assessed'))).toBe(true);
   });
 
   it('treats a street that flooded in 2015 as the strongest evidence', () => {

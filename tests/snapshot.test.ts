@@ -5,9 +5,11 @@ import { routeRequest } from '../engine/src/api/router.ts';
 import { buildSnapshot, type ServiceDependencies } from '../engine/src/api/service.ts';
 import type { HourlyRain, Snapshot } from '../engine/src/core/types.ts';
 import placesData from '../engine/src/data/chennai-places.json' with { type: 'json' };
+import citiesData from '../engine/src/data/india-cities.json' with { type: 'json' };
 
 const NOW = new Date('2026-10-11T08:00:00Z');
-const TOTAL = placesData.places.length;
+const LOCALITIES = placesData.places.length;
+const TOTAL = LOCALITIES + citiesData.places.length;
 const FIFTH = placesData.places[4] as (typeof placesData.places)[number];
 
 function rain(mmPerHour: number): HourlyRain[] {
@@ -82,7 +84,7 @@ describe('buildSnapshot', () => {
     await buildSnapshot(deps);
     expect(deps.alerts).toHaveLength(1);
     expect(deps.alerts[0]?.topic).toBe('CITY');
-    expect(deps.alerts[0]?.subject).toMatch(/^Vellam: flooding likely in \d+ Chennai localities$/);
+    expect(deps.alerts[0]?.subject).toMatch(/^Vellam: flooding likely in \d+ places$/);
     expect(deps.alerts[0]?.message).toContain('Velachery');
   });
 
@@ -99,6 +101,15 @@ describe('buildSnapshot', () => {
     const snapshot = await buildSnapshot(deps);
     expect(snapshot.missing).toEqual([FIFTH.name]);
     expect(snapshot.places).toHaveLength(TOTAL - 1);
+  });
+
+  it('covers the major cities live, and only the Chennai localities in a replay', async () => {
+    const live = await buildSnapshot(dependencies(0));
+    expect(live.places.filter((place) => place.kind === 'CITY').map((place) => place.name)).toContain('Mumbai');
+    expect(live.places).toHaveLength(TOTAL);
+    const replay = await buildSnapshot(dependencies(0), '2023-12-04');
+    expect(replay.places).toHaveLength(LOCALITIES);
+    expect(replay.places.every((place) => place.kind === 'LOCALITY')).toBe(true);
   });
 
   it('fails outright only when no place at all can be assessed', async () => {

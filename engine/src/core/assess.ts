@@ -75,6 +75,8 @@ export interface AssessmentInput {
   /** False when the place is outside the area the Chennai maps cover. */
   readonly mapped: boolean;
   readonly nearestWater?: NearestWater;
+  /** True when water near a place outside the Chennai maps was looked up in OpenStreetMap. */
+  readonly waterSearched?: boolean;
   /** Metres to the nearest street marked as flooded in December 2015, when within a kilometre. */
   readonly floodedStreetMetres?: number;
   /** The reservoir upstream, when the place is beside a river one empties into. */
@@ -109,7 +111,10 @@ export function assess(input: AssessmentInput): Assessment {
   if (!mapped) {
     evidence.push({
       source: 'MAP',
-      statement: 'This place is outside the Chennai maps, so past flooding and distance to water were not assessed',
+      statement:
+        input.waterSearched === true
+          ? 'This place is outside Chennai, where no record of past flooding is held. Water within 1 km was read from OpenStreetMap'
+          : 'This place is outside Chennai, where no record of past flooding is held, and the map of water nearby could not be read, so distance to water was not assessed',
     });
   }
   const risky = factors.filter((factor) => factor.weight > 0).length;
@@ -131,6 +136,7 @@ export function assess(input: AssessmentInput): Assessment {
     ...(nearestWater === undefined ? {} : { nearestWater }),
     ...(floodedStreetMetres === undefined ? {} : { floodedStreetMetres }),
     mapped,
+    ...(input.waterSearched === true ? { waterSearched: true } : {}),
   };
 }
 

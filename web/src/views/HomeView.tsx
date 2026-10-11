@@ -26,18 +26,18 @@ const DIAL_MAX = 260;
 const VELACHERY = { lat: 12.9756, lon: 80.2207 };
 const MICHAUNG = '2023-12-04';
 
-/** What the cloud says before anyone touches the dial: the state of the city, read live. */
+/** What the cloud says before anyone touches the dial: the places Vellam watches, read live. */
 function cityLine(snapshot: Snapshot | undefined): { level: Level; line: string } | undefined {
   if (snapshot === undefined) return undefined;
   const count = (levels: readonly Level[]) => snapshot.places.filter((place) => levels.includes(place.level)).length;
   const atRisk = count(['HIGH', 'SEVERE']);
   if (atRisk > 0) {
     const level = snapshot.places.some((place) => place.level === 'SEVERE') ? 'SEVERE' : 'HIGH';
-    return { level, line: `Flooding is likely in ${String(atRisk)} Chennai localities in the next 48 hours.` };
+    return { level, line: `Flooding is likely in ${String(atRisk)} of the ${String(snapshot.places.length)} places Vellam watches in the next 48 hours.` };
   }
   const watching = count(['WATCH']);
-  if (watching > 0) return { level: 'WATCH', line: `Rain is on the way. ${String(watching)} Chennai localities are on watch.` };
-  return { level: 'LOW', line: `Chennai looks dry for the next 48 hours. All ${String(snapshot.places.length)} localities are low.` };
+  if (watching > 0) return { level: 'WATCH', line: `Rain is on the way. ${String(watching)} of the ${String(snapshot.places.length)} places Vellam watches are on watch.` };
+  return { level: 'LOW', line: `The next 48 hours look dry. All ${String(snapshot.places.length)} places Vellam watches are low.` };
 }
 
 /**
@@ -70,7 +70,7 @@ function RainDial() {
 
       <p className="dial-says" role="status">
         {mm === undefined || rainClass === undefined
-          ? (live?.line ?? 'Reading the sky over Chennai.')
+          ? (live?.line ?? 'Reading the sky over India.')
           : `${String(mm)} mm in a day. The India Meteorological Department calls that ${describeRainClass(rainClass).split(' (')[0] ?? ''}.`}
       </p>
 
@@ -170,8 +170,8 @@ export function HomeView() {
         <div className="hero-copy">
           <h1>Will my street flood?</h1>
           <p className="lead">
-            Flood warnings in India cover a whole district. Vellam answers for one street in Chennai: what to expect in the
-            next 48 hours, the reasons, and what to do about it.
+            Flood warnings in India cover a whole district. Vellam answers for one street, anywhere in the country: what to
+            expect in the next 48 hours, the reasons, and what to do about it. Chennai, where it began, has the deepest record.
           </p>
           <Finder />
           <a className="button button-solid button-large" href="#/check">

@@ -3,14 +3,14 @@ import { GUIDANCE_SOURCE, guidanceFor, HELPLINE_SOURCE, HELPLINES } from '../../
 import type { Level } from '../../../engine/src/core/types.ts';
 import { AlertsForm } from '../components/AlertsForm.tsx';
 import { Mascot } from '../components/Mascot.tsx';
-import { LEVEL_NAME, useText } from '../i18n.ts';
+import { useText } from '../i18n.ts';
 import { LEVEL } from '../level.ts';
 
 const ORDER: readonly Level[] = ['WATCH', 'HIGH', 'SEVERE'];
 
 /** What each level asks of a household, the numbers to call, and a way to be told. */
 export function PrepareView() {
-  const { t, language } = useText();
+  const { t, levelName, helplineName, advice: adviceFor } = useText();
   return (
     <div className="stack">
       <header className="page-head page-head-art">
@@ -23,7 +23,7 @@ export function PrepareView() {
 
       <div className="level-grid">
         {ORDER.map((level) => {
-          const advice = guidanceFor(level, language);
+          const advice = adviceFor(level, guidanceFor(level));
           const LevelIcon = LEVEL[level].icon;
           return (
             <section key={level} className="level-card" style={{ borderTopColor: LEVEL[level].colour }}>
@@ -31,7 +31,7 @@ export function PrepareView() {
                 <Mascot mood={LEVEL[level].mood} size={72} />
                 <div>
                   <span className="pill" style={{ background: LEVEL[level].colour }}>
-                    <LevelIcon weight="fill" aria-hidden="true" /> {LEVEL_NAME[level][language]}
+                    <LevelIcon weight="fill" aria-hidden="true" /> {levelName(level)}
                   </span>
                   <h2>{advice.headline}</h2>
                 </div>
@@ -63,7 +63,7 @@ export function PrepareView() {
           {HELPLINES.map((line) => (
             <a key={line.number} href={`tel:${line.number}`} className="helpline">
               <strong>{line.number}</strong>
-              <span>{line[language]}</span>
+              <span>{helplineName(line)}</span>
             </a>
           ))}
         </div>
