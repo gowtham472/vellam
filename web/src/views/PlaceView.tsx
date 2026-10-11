@@ -143,12 +143,14 @@ export function PlaceView({ point, date }: { point: Point; date?: string }) {
           {LEVEL_NAME[assessment.level][language]}
           <small>{advice.headline}</small>
         </h1>
-        {assessment.peak !== undefined && <p className="peak">Worst around {formatHour(assessment.peak.start)}</p>}
+        {assessment.peak !== undefined && <p className="peak">
+            {t('worstAround')} {formatHour(assessment.peak.start)}
+          </p>}
       </section>
 
       <section className="panel">
         <div className="panel-head">
-          <h2>{date === undefined ? t('next48') : `48 h from ${formatHour(assessment.from)}`}</h2>
+          <h2>{date === undefined ? t('next48') : `${t('hoursFrom')} ${formatHour(assessment.from)}`}</h2>
           <span className="muted">mm / 6 h</span>
         </div>
         <Timeline windows={assessment.windows} />

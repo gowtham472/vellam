@@ -51,7 +51,7 @@ function Header({ onToggle }: { onToggle: () => void }) {
         </span>
       </a>
       <nav>
-        <a href="#/about">{t('about')}</a>
+        <a href="#/about">{t('aboutShort')}</a>
         <button type="button" className="language" onClick={onToggle}>
           {t('language')}
         </button>
