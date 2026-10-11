@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { addHours, assess } from '../engine/src/core/assess.ts';
 import { applyReports, reportFloor, type NearbyReport } from '../engine/src/core/reports.ts';
-import { reservoirFactor, type ReservoirReading, type RiverExposure } from '../engine/src/core/reservoirs.ts';
+import { reservoirFactor, reservoirFloor, type ReservoirReading, type RiverExposure } from '../engine/src/core/reservoirs.ts';
 import type { HourlyRain } from '../engine/src/core/types.ts';
 import { nearestNamedWater, type WaterMap } from '../engine/src/core/water.ts';
 import { parseReservoirPage } from '../engine/src/sources/reservoirs.ts';
@@ -73,6 +73,38 @@ describe('reservoirFactor', () => {
     const base = { point: { lat: 13.02, lon: 80.22 }, series, nowIndex: 72, basis: 'FORECAST' as const, terrain: { elevation: 12, surroundings: [12, 13, 12, 12] }, mapped: true };
     expect(assess(base).level).toBe('WATCH');
     expect(assess({ ...base, riverExposure: exposure(93, 29000) }).level).toBe('SEVERE');
+  });
+});
+
+describe('reservoirFloor', () => {
+  const dry: HourlyRain[] = Array.from({ length: 120 }, (_, i) => ({ time: addHours('2015-11-28T00:00', i), mm: 0 }));
+  const riverside = { point: { lat: 13.02, lon: 80.22 }, series: dry, nowIndex: 72, basis: 'REPLAY' as const, terrain: { elevation: 12, surroundings: [12, 12] }, mapped: true };
+
+  it('sets no floor for a reservoir that is only nearly full', () => {
+    expect(reservoirFloor(exposure(95, 500))).toBeUndefined();
+    expect(assess({ ...riverside, riverExposure: exposure(95, 500) }).level).toBe('LOW');
+  });
+
+  it('holds a riverside street at high for a heavy release, with no rain at all', () => {
+    const result = assess({ ...riverside, riverExposure: exposure(80.77, 3279) });
+    expect(result.level).toBe('HIGH');
+    expect(result.windows.every((window) => window.level === 'HIGH')).toBe(true);
+    expect(result.evidence.at(-1)?.statement).toContain('3,279 cusecs as at least HIGH');
+  });
+
+  it('holds it at severe for a release the size of December 2015', () => {
+    expect(assess({ ...riverside, riverExposure: exposure(93.17, 29000) }).level).toBe('SEVERE');
+  });
+
+  it('leaves a street far from the river alone', () => {
+    expect(assess({ ...riverside, riverExposure: exposure(93.17, 29000, 900) }).level).toBe('LOW');
+  });
+
+  it('does not repeat itself where the rain already reaches the same level', () => {
+    const wet: HourlyRain[] = Array.from({ length: 120 }, (_, i) => ({ time: addHours('2015-11-28T00:00', i), mm: i < 72 ? 0 : 12 }));
+    const result = assess({ ...riverside, series: wet, riverExposure: exposure(93.17, 29000) });
+    expect(result.level).toBe('SEVERE');
+    expect(result.evidence.filter((item) => item.statement.includes('whatever the rain'))).toHaveLength(0);
   });
 });
 

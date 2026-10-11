@@ -142,6 +142,14 @@ describe('reservoirs', () => {
 });
 
 describe('reports', () => {
+  it('counts one report once at a spot where neighbouring cells used to coincide', async () => {
+    const deps = dependencies({ fetchForecast: () => Promise.resolve({ series: rain(0), nowIndex: 85 }) });
+    await routeRequest(deps, { method: 'POST', path: '/reports', query: {}, body: JSON.stringify({ lat: 13.0601, lon: 80.3601, depth: 'KNEE' }) });
+    const { body } = await get<PlaceView>(deps, '/assess', { lat: '13.06', lon: '80.36' });
+    expect(body.reports).toHaveLength(1);
+    expect(body.assessment.level).toBe('WATCH');
+  });
+
   it('raises a dry forecast to high once two neighbours report knee deep water nearby', async () => {
     const deps = dependencies({ fetchForecast: () => Promise.resolve({ series: rain(0), nowIndex: 85 }) });
     const send = () => routeRequest(deps, { method: 'POST', path: '/reports', query: {}, body: JSON.stringify({ lat: 12.9758, lon: 80.2209, depth: 'KNEE' }) });
@@ -216,5 +224,15 @@ describe('storage keys', () => {
 
   it('searches the cell a point is in and the eight around it', () => {
     expect(new Set(reportCellsAround({ lat: 12.9756, lon: 80.2207 })).size).toBe(9);
+  });
+
+  it('never searches the same cell twice, even where the coordinates divide badly', () => {
+    // Found on the live API: at this spot one report was read back as two.
+    expect(new Set(reportCellsAround({ lat: 13.06, lon: 80.36 })).size).toBe(9);
+    for (let lat = 12.8; lat < 13.3; lat += 0.013) {
+      for (let lon = 80.0; lon < 80.4; lon += 0.017) {
+        expect(new Set(reportCellsAround({ lat, lon })).size).toBe(9);
+      }
+    }
   });
 });

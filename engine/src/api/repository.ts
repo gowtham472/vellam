@@ -34,16 +34,26 @@ export function placeKey(point: Point): string {
   return `${point.lat.toFixed(3)},${point.lon.toFixed(3)}`;
 }
 
-function reportCell(lat: number, lon: number): string {
-  return `${String(Math.floor(lat / REPORT_CELL_DEGREES))}:${String(Math.floor(lon / REPORT_CELL_DEGREES))}`;
+function cellIndex(degrees: number): number {
+  return Math.floor(degrees / REPORT_CELL_DEGREES);
 }
 
-/** The cell a point falls in and its eight neighbours, about six kilometres across in all. */
+function reportCell(lat: number, lon: number): string {
+  return `${String(cellIndex(lat))}:${String(cellIndex(lon))}`;
+}
+
+/**
+ * The cell a point falls in and its eight neighbours, about six kilometres across in all.
+ *
+ * Neighbours are found by stepping the whole-number index. Stepping the coordinate by a
+ * cell's width and rounding again can land in the same cell twice, because 13.06 / 0.02
+ * and 13.08 / 0.02 do not divide exactly; that read one report as two.
+ */
 export function reportCellsAround(point: Point): string[] {
   const cells: string[] = [];
   for (const dLat of [-1, 0, 1]) {
     for (const dLon of [-1, 0, 1]) {
-      cells.push(reportCell(point.lat + dLat * REPORT_CELL_DEGREES, point.lon + dLon * REPORT_CELL_DEGREES));
+      cells.push(`${String(cellIndex(point.lat) + dLat)}:${String(cellIndex(point.lon) + dLon)}`);
     }
   }
   return cells;

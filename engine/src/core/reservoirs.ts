@@ -1,4 +1,4 @@
-import type { Factor } from './types.ts';
+import type { Evidence, Factor, Level } from './types.ts';
 
 /** One reservoir on one morning, as Chennai Metro Water publishes it. */
 export interface ReservoirReading {
@@ -30,13 +30,14 @@ export const DOWNSTREAM = [
 ] as const;
 
 /**
- * These three numbers are judgements. The record gives them their scale: on 2 December
+ * These four numbers are judgements. The record gives them their scale: on 2 December
  * 2015 Chembarambakkam was 93% full and releasing 29,000 cusecs into the Adyar, and on
  * 4 December 2023 it was 81% full and releasing 3,279.
  */
 export const RIVER_REACH_METRES = 500;
 export const NEARLY_FULL_PERCENT = 80;
 export const HEAVY_RELEASE_CUSECS = 3000;
+export const VERY_HEAVY_RELEASE_CUSECS = 10000;
 
 export interface RiverExposure {
   readonly reading: ReservoirReading;
@@ -72,6 +73,27 @@ export function reservoirFactor(exposure: RiverExposure | undefined): Factor | u
       source: 'RESERVOIR',
       statement: `${state}${release} into ${river}, which is ${String(distanceMetres)} m from here`,
       link: RESERVOIR_SOURCE,
+    },
+  };
+}
+
+/**
+ * The lowest level a release allows beside its river, whatever the rain at that spot. A
+ * release is a hazard of its own: the water arrives down the river from rain that fell
+ * somewhere else. Replaying December 2015 showed why this is needed. The rain record for
+ * that day is far too low, and with the release treated only as a property of the place,
+ * Saidapet beside the Adyar came out as WATCH on the day 29,000 cusecs were let go.
+ */
+export function reservoirFloor(exposure: RiverExposure | undefined): { level: Level; evidence: Evidence } | undefined {
+  if (exposure === undefined || exposure.distanceMetres > RIVER_REACH_METRES) return undefined;
+  const release = exposure.reading.outflowCusecs ?? 0;
+  if (release < HEAVY_RELEASE_CUSECS) return undefined;
+  const level: Level = release >= VERY_HEAVY_RELEASE_CUSECS ? 'SEVERE' : 'HIGH';
+  return {
+    level,
+    evidence: {
+      source: 'JUDGEMENT',
+      statement: `Vellam rates a street within ${String(RIVER_REACH_METRES)} m of a river taking a release of ${thousands(release)} cusecs as at least ${level}, whatever the rain at that spot`,
     },
   };
 }

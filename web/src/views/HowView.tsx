@@ -1,4 +1,4 @@
-import { CloudRainIcon, DatabaseIcon, MapTrifoldIcon, ScalesIcon, SealCheckIcon, WarningDiamondIcon } from '@phosphor-icons/react';
+import { CloudRainIcon, DatabaseIcon, MapTrifoldIcon, ScalesIcon, SealCheckIcon, UsersThreeIcon, WarningDiamondIcon } from '@phosphor-icons/react';
 import { Mascot } from '../components/Mascot.tsx';
 import { LEVEL_NAME, useText } from '../i18n.ts';
 import { LEVEL } from '../level.ts';
@@ -7,6 +7,8 @@ import type { Level } from '../../../engine/src/core/types.ts';
 const FACTORS: readonly [string, string, string][] = [
   ['This street flooded in 2015', 'A street residents marked as flooded is within 60 m', '+2'],
   ['Streets nearby flooded in 2015', 'One is within 200 m', '+1'],
+  ['Reservoir upstream is releasing heavily', 'Within 500 m of the Adyar or the Kosasthalaiyar, and the reservoir above it is releasing 3,000 cusecs or more', '+2'],
+  ['Reservoir upstream is nearly full', 'Within 500 m of one of those rivers, and the reservoir is at least 80% full', '+1'],
   ['Close to a water body', 'A lake, marsh, river or canal within 300 m. Within 100 m counts double', '+1 or +2'],
   ['Low ground', 'Five metres above sea level or less', '+1'],
   ['Lower than its surroundings', 'At least five metres below the ground a kilometre around', '+1'],
@@ -26,6 +28,16 @@ const WRONG: readonly [string, string, string][] = [
   ['Flooded street within 150 m, nearby within 400 m', '150 m reached 52% of random points in the core city and 400 m reached 79%. The factor said yes to almost everyone.', '60 m and 200 m'],
   ['Height differences of 2 m and 3 m', 'The elevation model is a 90 m grid that includes rooftops. It described Velachery as raised ground.', '5 m and 10 m'],
   ['Ground soaked after 64.5 mm in 72 hours', 'Replaying 15 October 2024, every locality counted as soaked and 47 of 65 came out high.', '115.6 mm'],
+  [
+    'A reservoir release counted only as a property of the place',
+    'Replaying December 2015, Saidapet beside the Adyar came out as watch on the day 29,000 cusecs were released, because the rain record for that day is far too low.',
+    'A heavy release sets its own floor',
+  ],
+  [
+    'Reports searched by stepping the coordinate',
+    'On the live site one report was read back as two, which let a single report reach high. Neighbouring search cells had come out identical.',
+    'Cells are stepped by whole numbers',
+  ],
 ];
 
 /** How Vellam reaches an answer, and where that answer should not be trusted. */
@@ -132,7 +144,28 @@ export function HowView() {
       <section className="card">
         <div className="card-head">
           <h2>
-            <SealCheckIcon weight="fill" aria-hidden="true" /> 4. It checks itself
+            <UsersThreeIcon weight="fill" aria-hidden="true" /> 4. Two things that overrule the table
+          </h2>
+        </div>
+        <ul className="prose-list">
+          <li>
+            <strong>Water somebody is standing in.</strong> Reports within 300 m and six hours set a floor under the level
+            whatever the forecast says. Reports are anonymous, so one alone raises the level to watch at most. Two that
+            agree on knee deep or more make it high, and two of waist deep make it severe. A report of no water never
+            lowers the level.
+          </li>
+          <li>
+            <strong>A reservoir letting go.</strong> A street within 500 m of a river taking a release of 3,000 cusecs or
+            more is at least high, and at least severe from 10,000, whatever the rain at that spot. The water arrives down
+            the river from rain that fell somewhere else.
+          </li>
+        </ul>
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <h2>
+            <SealCheckIcon weight="fill" aria-hidden="true" /> 5. It checks itself
           </h2>
         </div>
         <p>
@@ -182,7 +215,18 @@ export function HowView() {
             The 2015 map was drawn by volunteers during the flood. A street missing from it may still have flooded, and
             nothing since 2015, including new storm drains, is reflected in it.
           </li>
-          <li>A forecast can be wrong. Cloudbursts and reservoir releases are not predicted here.</li>
+          <li>
+            A forecast can be wrong, and cloudbursts are not predicted here. A reservoir release is read from yesterday's
+            bulletin, so one that starts today is not seen until tomorrow's.
+          </li>
+          <li>
+            The rain record used for replays is a weather model's reconstruction. For 1 December 2015 it shows 49 mm where
+            the reservoir's own gauge measured 475 mm, so that replay is nearly dry.
+          </li>
+          <li>
+            The 3D view floods everything below one height, like a bathtub. It shows the shape of the ground and makes no
+            claim about how deep water will get.
+          </li>
           <li>Vellam is not an official warning. Follow IMD and Greater Chennai Corporation advisories.</li>
         </ul>
       </section>
@@ -202,6 +246,13 @@ export function HowView() {
           </li>
           <li>
             Water bodies and locality names: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+          </li>
+          <li>
+            Reservoir levels: <a href="https://cmwssb.tn.gov.in/lake-level">Chennai Metro Water</a>, daily bulletin.
+          </li>
+          <li>
+            Ground heights in the 3D view: Terrain Tiles on the <a href="https://registry.opendata.aws/terrain-tiles/">Registry of Open Data on AWS</a>. Buildings:{' '}
+            <a href="https://openfreemap.org">OpenFreeMap</a>.
           </li>
           <li>
             Rain classes:{' '}

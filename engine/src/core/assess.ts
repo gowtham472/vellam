@@ -1,6 +1,6 @@
 import { median } from './geo.ts';
 import { classifyDailyRain, describeRainClass, IMD_CLASSIFICATION_URL, rainBefore, roundMm } from './rain.ts';
-import { reservoirFactor, type RiverExposure } from './reservoirs.ts';
+import { reservoirFactor, reservoirFloor, type RiverExposure } from './reservoirs.ts';
 import type {
   Assessment,
   Evidence,
@@ -90,7 +90,12 @@ export function assess(input: AssessmentInput): Assessment {
   if (soaked !== undefined) factors.push(soaked);
   const susceptibility = susceptibilityOf(factors);
 
-  const windows = buildWindows(series, nowIndex, susceptibility);
+  // A heavy release holds every window at its floor: the bulletin describes the river for
+  // the whole period, not one six hour stretch of it.
+  const floor = reservoirFloor(input.riverExposure);
+  const windows = buildWindows(series, nowIndex, susceptibility).map((window) =>
+    floor !== undefined && rank(floor.level) > rank(window.level) ? { ...window, level: floor.level } : window,
+  );
   const level = windows.reduce<Level>((worst, w) => (rank(w.level) > rank(worst) ? w.level : worst), 'LOW');
   const peak = level === 'LOW' ? undefined : windows.find((w) => w.level === level);
   const wettest = windows.reduce<RainWindow | undefined>(
@@ -108,7 +113,9 @@ export function assess(input: AssessmentInput): Assessment {
     });
   }
   const risky = factors.filter((factor) => factor.weight > 0).length;
-  evidence.push(judgementEvidence(wettest?.rainClass ?? 'LIGHT', risky, level));
+  const rainLevel = levelFor(wettest?.rainClass ?? 'LIGHT', susceptibility);
+  evidence.push(judgementEvidence(wettest?.rainClass ?? 'LIGHT', risky, rainLevel));
+  if (floor !== undefined && rank(floor.level) > rank(rainLevel)) evidence.push(floor.evidence);
 
   return {
     point,

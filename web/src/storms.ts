@@ -23,7 +23,7 @@ export const STORMS = [
     name: 'The 2015 flood',
     note: '1 December 2015',
     summary:
-      'Record rain, then Chembarambakkam released 29,000 cusecs into the Adyar. The streets marked in 2015 come from this flood, so this replay cannot test that record.',
+      'The rain record shows 49 mm where the reservoir gauge measured 475 mm, so this replay is nearly dry. Streets beside the Adyar are still flagged, from the 29,000 cusec release alone.',
   },
   {
     date: '2021-11-11',
